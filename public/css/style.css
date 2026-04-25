@@ -377,3 +377,197 @@ body {
 
 /* ── Projection sub ─────────────────── */
 .proj-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Family Profile Page ────────────────────────────────── */
+.profile-section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 28px 0 14px;
+}
+
+/* Family member cards */
+.family-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.family-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.primary-card {
+  border-color: rgba(16,185,129,0.25);
+  background: rgba(16,185,129,0.04);
+}
+.family-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.family-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: 15px;
+  color: white;
+  flex-shrink: 0;
+}
+.family-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.family-role {
+  font-size: 10px;
+  background: rgba(16,185,129,0.15);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+.family-dob { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.family-age-badge {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.family-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.family-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.fstat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 3px; }
+.fstat-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; color: var(--text); }
+
+/* Financial position cards */
+.finance-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.finance-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.total-card { justify-content: center; }
+.finance-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  font-family: 'Syne', sans-serif;
+}
+.form-group-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+.total-val { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--warning); }
+.total-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Assumption cards */
+.assumptions-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.assumption-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.assumption-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.input-wrap .suffix {
+  position: absolute;
+  right: 12px;
+  left: auto;
+  color: var(--text-muted);
+}
+.input-wrap input { padding-right: 28px; }
+
+/* Goals profile grid */
+.goals-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.goal-profile-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.goal-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.goal-profile-left { display: flex; align-items: center; gap: 12px; }
+.goal-profile-icon { font-size: 24px; }
+.goal-profile-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.goal-profile-meta { font-size: 11px; color: var(--text-muted); text-transform: capitalize; margin-top: 2px; }
+.goal-profile-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+}
+.gpa-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+.gpa-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+.goal-profile-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Save toast */
+.save-toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: var(--accent);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  z-index: 999;
+  box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+}
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }

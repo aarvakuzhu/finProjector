@@ -1,0 +1,431 @@
+<%- include('partials/header', { title: 'Family Profile', page: 'family' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Family Profile</h1>
+    <p class="page-sub">Everyone's details, financial position, and life goals — all in one place</p>
+  </div>
+  <button class="btn btn-primary" id="btnSaveAll">Save All Changes</button>
+</div>
+
+<div id="saveMsg" class="save-toast" style="display:none">✓ Saved successfully</div>
+
+<!-- ── Family Members ─────────────────────────────────── -->
+<div class="profile-section-title">👨‍👩‍👦‍👦 Family Members</div>
+<div class="family-cards">
+
+  <div class="family-card primary-card">
+    <div class="family-card-header">
+      <div class="family-avatar" style="background: linear-gradient(135deg,#10b981,#059669)">A</div>
+      <div>
+        <div class="family-name">Ash <span class="family-role">Primary</span></div>
+        <div class="family-dob">Born May 1981</div>
+      </div>
+      <div class="family-age-badge" id="ashAge"></div>
+    </div>
+    <div class="family-fields">
+      <div class="form-group">
+        <label>Current Age</label>
+        <input type="number" id="currentAge" placeholder="45">
+      </div>
+      <div class="form-group">
+        <label>Retirement Age Target</label>
+        <input type="number" id="retirementAge" placeholder="65">
+      </div>
+    </div>
+    <div class="family-stat-row">
+      <div class="fstat"><div class="fstat-label">Retirement Year</div><div class="fstat-val" id="retirementYear">—</div></div>
+      <div class="fstat"><div class="fstat-label">Years to Retire</div><div class="fstat-val" id="yearsToRetire">—</div></div>
+    </div>
+  </div>
+
+  <div class="family-card">
+    <div class="family-card-header">
+      <div class="family-avatar" style="background: linear-gradient(135deg,#ec4899,#be185d)">K</div>
+      <div>
+        <div class="family-name">KP</div>
+        <div class="family-dob">Born Apr 1988</div>
+      </div>
+      <div class="family-age-badge">Age 38</div>
+    </div>
+    <div class="family-stat-row" style="margin-top:12px">
+      <div class="fstat"><div class="fstat-label">Retirement at 65</div><div class="fstat-val">2053</div></div>
+      <div class="fstat"><div class="fstat-label">Years to Retire</div><div class="fstat-val">27</div></div>
+    </div>
+  </div>
+
+  <div class="family-card">
+    <div class="family-card-header">
+      <div class="family-avatar" style="background: linear-gradient(135deg,#6366f1,#4338ca)">Ab</div>
+      <div>
+        <div class="family-name">Abhi</div>
+        <div class="family-dob">Born Apr 2012</div>
+      </div>
+      <div class="family-age-badge">Age 14</div>
+    </div>
+    <div class="family-stat-row" style="margin-top:12px">
+      <div class="fstat"><div class="fstat-label">College Starts</div><div class="fstat-val">2030</div></div>
+      <div class="fstat"><div class="fstat-label">Years Away</div><div class="fstat-val">4</div></div>
+    </div>
+  </div>
+
+  <div class="family-card">
+    <div class="family-card-header">
+      <div class="family-avatar" style="background: linear-gradient(135deg,#f97316,#c2410c)">Ad</div>
+      <div>
+        <div class="family-name">Adhar</div>
+        <div class="family-dob">Born Jun 2014</div>
+      </div>
+      <div class="family-age-badge">Age 11</div>
+    </div>
+    <div class="family-stat-row" style="margin-top:12px">
+      <div class="fstat"><div class="fstat-label">College Starts</div><div class="fstat-val">2032</div></div>
+      <div class="fstat"><div class="fstat-label">Years Away</div><div class="fstat-val">6</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Financial Position ─────────────────────────────── -->
+<div class="profile-section-title">💰 Current Financial Position</div>
+<div class="finance-cards">
+
+  <div class="finance-card">
+    <div class="finance-card-icon" style="background:rgba(16,185,129,0.12);color:#10b981">$</div>
+    <div class="form-group">
+      <label>Cash Savings</label>
+      <small>Checking + savings accounts</small>
+      <div class="input-wrap"><span>$</span><input type="number" id="currentSavings" placeholder="0"></div>
+    </div>
+  </div>
+
+  <div class="finance-card">
+    <div class="finance-card-icon" style="background:rgba(99,102,241,0.12);color:#6366f1">📈</div>
+    <div class="form-group">
+      <label>Investment Portfolio</label>
+      <small>401k + IRA + Brokerage + HSA</small>
+      <div class="input-wrap"><span>$</span><input type="number" id="currentInvestments" placeholder="0"></div>
+    </div>
+  </div>
+
+  <div class="finance-card total-card">
+    <div class="finance-card-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b">∑</div>
+    <div>
+      <div class="form-group-label">Total Net Worth</div>
+      <div class="total-val" id="totalNetWorth">—</div>
+      <div class="total-sub">Cash + Investments</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Growth Assumptions ─────────────────────────────── -->
+<div class="profile-section-title">📊 Projection Assumptions</div>
+<div class="assumptions-cards">
+  <div class="assumption-card">
+    <div class="assumption-icon">📈</div>
+    <div class="form-group">
+      <label>Annual Investment Return</label>
+      <small>S&P 500 historical avg: 7%</small>
+      <div class="input-wrap"><input type="number" id="annualReturnRate" placeholder="7" step="0.5"><span class="suffix">%</span></div>
+    </div>
+  </div>
+  <div class="assumption-card">
+    <div class="assumption-icon">💹</div>
+    <div class="form-group">
+      <label>Inflation Rate</label>
+      <small>US avg: 3%</small>
+      <div class="input-wrap"><input type="number" id="inflationRate" placeholder="3" step="0.5"><span class="suffix">%</span></div>
+    </div>
+  </div>
+  <div class="assumption-card">
+    <div class="assumption-icon">💼</div>
+    <div class="form-group">
+      <label>Annual Salary Growth</label>
+      <small>Typical: 3–5%</small>
+      <div class="input-wrap"><input type="number" id="salaryGrowthRate" placeholder="4" step="0.5"><span class="suffix">%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Life Goals ─────────────────────────────────────── -->
+<div class="profile-section-title" style="display:flex;align-items:center;justify-content:space-between">
+  <span>🎯 Life Goals</span>
+  <button class="btn btn-ghost btn-sm" id="btnAddGoal">+ Add Goal</button>
+</div>
+<div class="goals-profile-grid" id="goalsGrid">
+  <p class="empty-msg loading-msg">Loading goals...</p>
+</div>
+
+<!-- Goal Modal -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add Goal</h3>
+      <button class="modal-close" id="btnModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Goal Name</label>
+        <input type="text" id="goalName" placeholder="e.g. College — Abhi">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="goalCategory">
+            <option value="college">🎓 College</option>
+            <option value="wedding">💍 Wedding</option>
+            <option value="house">🏠 House</option>
+            <option value="travel">✈️ Travel</option>
+            <option value="emergency">🛡️ Emergency Fund</option>
+            <option value="other">⭐ Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Year</label>
+          <input type="number" id="goalYear" placeholder="2035">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Target Amount ($)</label>
+          <input type="number" id="goalAmount" placeholder="100000">
+        </div>
+        <div class="form-group">
+          <label>Already Saved ($)</label>
+          <input type="number" id="goalSaved" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-picks">
+          <% ['#10b981','#f59e0b','#6366f1','#ef4444','#ec4899','#14b8a6','#f97316','#8b5cf6'].forEach(c => { %>
+            <div class="color-pick" style="background:<%= c %>" data-color="<%= c %>"></div>
+          <% }) %>
+        </div>
+        <input type="hidden" id="goalColor" value="#f59e0b">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnModalCancel">Cancel</button>
+      <button class="btn btn-danger" id="btnDeleteGoal" style="display:none">Delete Goal</button>
+      <button class="btn btn-primary" id="btnSaveGoal">Save Goal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = n => '$' + Math.round(n || 0).toLocaleString();
+const currentYear = new Date().getFullYear();
+const ICONS = { college:'🎓', wedding:'💍', house:'🏠', travel:'✈️', emergency:'🛡️', other:'⭐' };
+
+let profile = null;
+let editIndex = -1;
+
+// ── Load & Render ──────────────────────────────────────────
+
+async function loadProfile() {
+  profile = await fetch('/api/profile').then(r => r.json());
+  populateFields();
+  renderGoals();
+  updateRetirementCalc();
+  updateNetWorth();
+}
+
+function populateFields() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('currentAge', profile.currentAge);
+  set('retirementAge', profile.retirementAge);
+  set('currentSavings', profile.currentSavings);
+  set('currentInvestments', profile.currentInvestments);
+  set('annualReturnRate', profile.annualReturnRate);
+  set('inflationRate', profile.inflationRate);
+  set('salaryGrowthRate', profile.salaryGrowthRate);
+}
+
+function updateRetirementCalc() {
+  const age = parseInt(document.getElementById('currentAge').value) || 45;
+  const retAge = parseInt(document.getElementById('retirementAge').value) || 65;
+  const retYear = currentYear + (retAge - age);
+  const yearsLeft = retAge - age;
+  document.getElementById('ashAge').textContent = `Age ${age}`;
+  document.getElementById('retirementYear').textContent = retYear;
+  document.getElementById('yearsToRetire').textContent = Math.max(0, yearsLeft);
+}
+
+function updateNetWorth() {
+  const savings = parseFloat(document.getElementById('currentSavings').value) || 0;
+  const investments = parseFloat(document.getElementById('currentInvestments').value) || 0;
+  document.getElementById('totalNetWorth').textContent = fmt(savings + investments);
+}
+
+// Live updates
+['currentAge','retirementAge'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updateRetirementCalc);
+});
+['currentSavings','currentInvestments'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updateNetWorth);
+});
+
+// ── Goals Render ───────────────────────────────────────────
+
+function renderGoals() {
+  const grid = document.getElementById('goalsGrid');
+  const goals = profile.goals || [];
+  if (goals.length === 0) {
+    grid.innerHTML = '<p class="empty-msg">No goals yet. Add your first financial milestone!</p>';
+    return;
+  }
+  grid.innerHTML = goals.map((g, i) => {
+    const pct = g.targetAmount > 0 ? Math.min(100, Math.round(((g.currentSaved || 0) / g.targetAmount) * 100)) : 0;
+    const remaining = (g.targetAmount || 0) - (g.currentSaved || 0);
+    const yearsLeft = (g.targetYear || currentYear) - currentYear;
+    const perMonth = yearsLeft > 0 ? Math.round(Math.max(0, remaining) / (yearsLeft * 12)) : 0;
+    return `<div class="goal-profile-card" style="border-top: 3px solid ${g.color || '#f59e0b'}">
+      <div class="goal-profile-header">
+        <div class="goal-profile-left">
+          <span class="goal-profile-icon">${ICONS[g.category] || '⭐'}</span>
+          <div>
+            <div class="goal-profile-name">${g.name}</div>
+            <div class="goal-profile-meta">${g.category} · Target: ${g.targetYear}</div>
+          </div>
+        </div>
+        <button class="goal-edit-btn" onclick="openEdit(${i})" title="Edit">✏️</button>
+      </div>
+
+      <div class="goal-profile-amounts">
+        <div class="gpa"><div class="gpa-label">Target</div><div class="gpa-val">${fmt(g.targetAmount)}</div></div>
+        <div class="gpa"><div class="gpa-label">Saved</div><div class="gpa-val positive">${fmt(g.currentSaved)}</div></div>
+        <div class="gpa"><div class="gpa-label">Remaining</div><div class="gpa-val negative">${fmt(remaining)}</div></div>
+        <div class="gpa"><div class="gpa-label">Need/Month</div><div class="gpa-val">${fmt(perMonth)}</div></div>
+      </div>
+
+      <div class="progress-bar" style="margin:0 0 8px 0">
+        <div class="progress-fill" style="width:${pct}%;background:${g.color || '#f59e0b'}"></div>
+      </div>
+      <div class="goal-profile-footer">
+        <span>${pct}% funded</span>
+        <span>${Math.max(0, yearsLeft)} years away</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Save All ───────────────────────────────────────────────
+
+document.getElementById('btnSaveAll').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSaveAll');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+
+  const body = {
+    currentAge: parseFloat(document.getElementById('currentAge').value) || 45,
+    retirementAge: parseFloat(document.getElementById('retirementAge').value) || 65,
+    currentSavings: parseFloat(document.getElementById('currentSavings').value) || 0,
+    currentInvestments: parseFloat(document.getElementById('currentInvestments').value) || 0,
+    annualReturnRate: parseFloat(document.getElementById('annualReturnRate').value) || 7,
+    inflationRate: parseFloat(document.getElementById('inflationRate').value) || 3,
+    salaryGrowthRate: parseFloat(document.getElementById('salaryGrowthRate').value) || 4,
+    goals: profile.goals || []
+  };
+
+  try {
+    profile = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(r => r.json());
+
+    const toast = document.getElementById('saveMsg');
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+    renderGoals();
+    updateRetirementCalc();
+    updateNetWorth();
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+  }
+
+  btn.textContent = 'Save All Changes'; btn.disabled = false;
+});
+
+// ── Goal Modal ─────────────────────────────────────────────
+
+function openEdit(idx) {
+  editIndex = idx;
+  const g = profile.goals[idx];
+  document.getElementById('modalTitle').textContent = 'Edit Goal';
+  document.getElementById('goalName').value = g.name || '';
+  document.getElementById('goalCategory').value = g.category || 'other';
+  document.getElementById('goalYear').value = g.targetYear || '';
+  document.getElementById('goalAmount').value = g.targetAmount || '';
+  document.getElementById('goalSaved').value = g.currentSaved || 0;
+  document.getElementById('goalColor').value = g.color || '#f59e0b';
+  document.querySelectorAll('.color-pick').forEach(el => el.classList.toggle('selected', el.dataset.color === g.color));
+  document.getElementById('btnDeleteGoal').style.display = '';
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+window.openEdit = openEdit;
+
+document.getElementById('btnAddGoal').addEventListener('click', () => {
+  editIndex = -1;
+  document.getElementById('modalTitle').textContent = 'Add Goal';
+  document.getElementById('goalName').value = '';
+  document.getElementById('goalCategory').value = 'college';
+  document.getElementById('goalYear').value = currentYear + 5;
+  document.getElementById('goalAmount').value = '';
+  document.getElementById('goalSaved').value = 0;
+  document.getElementById('goalColor').value = '#f59e0b';
+  document.querySelectorAll('.color-pick').forEach(el => el.classList.toggle('selected', el.dataset.color === '#f59e0b'));
+  document.getElementById('btnDeleteGoal').style.display = 'none';
+  document.getElementById('modalOverlay').style.display = 'flex';
+});
+
+const closeModal = () => document.getElementById('modalOverlay').style.display = 'none';
+document.getElementById('btnModalClose').addEventListener('click', closeModal);
+document.getElementById('btnModalCancel').addEventListener('click', closeModal);
+
+document.querySelectorAll('.color-pick').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.color-pick').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('goalColor').value = el.dataset.color;
+  });
+});
+
+document.getElementById('btnSaveGoal').addEventListener('click', async () => {
+  const goal = {
+    name: document.getElementById('goalName').value.trim(),
+    category: document.getElementById('goalCategory').value,
+    targetYear: parseInt(document.getElementById('goalYear').value),
+    targetAmount: parseFloat(document.getElementById('goalAmount').value) || 0,
+    currentSaved: parseFloat(document.getElementById('goalSaved').value) || 0,
+    color: document.getElementById('goalColor').value
+  };
+  if (!goal.name || !goal.targetAmount) return alert('Please fill in goal name and target amount.');
+  const goals = [...(profile.goals || [])];
+  if (editIndex >= 0) goals[editIndex] = goal; else goals.push(goal);
+  profile = await fetch('/api/profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...profile, goals })
+  }).then(r => r.json());
+  closeModal();
+  renderGoals();
+});
+
+document.getElementById('btnDeleteGoal').addEventListener('click', async () => {
+  if (!confirm('Remove this goal?')) return;
+  const goals = [...(profile.goals || [])];
+  goals.splice(editIndex, 1);
+  profile = await fetch('/api/profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...profile, goals })
+  }).then(r => r.json());
+  closeModal();
+  renderGoals();
+});
+
+loadProfile();
+</script>
+
+<%- include('partials/footer') %>
