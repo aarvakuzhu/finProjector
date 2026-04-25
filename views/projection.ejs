@@ -1,0 +1,199 @@
+<%- include('partials/header', { title: 'Projections', page: 'projection' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Retirement Projection</h1>
+    <p class="page-sub">Your savings trajectory from today to retirement — and beyond</p>
+  </div>
+  <a href="/settings" class="btn btn-ghost">Adjust Assumptions →</a>
+</div>
+
+<div class="projection-summary" id="projSummary">
+  <div class="proj-stat">
+    <div class="proj-label">Avg Monthly Savings</div>
+    <div class="proj-val" id="projMonthly">—</div>
+  </div>
+  <div class="proj-stat">
+    <div class="proj-label">Avg Annual Savings</div>
+    <div class="proj-val" id="projAnnual">—</div>
+  </div>
+  <div class="proj-stat highlight">
+    <div class="proj-label">Projected at Retirement</div>
+    <div class="proj-val" id="projRetirement">—</div>
+  </div>
+  <div class="proj-stat">
+    <div class="proj-label">Retirement Year</div>
+    <div class="proj-val" id="projYear">—</div>
+  </div>
+</div>
+
+<div class="chart-card fullwidth">
+  <h3 class="chart-title">Portfolio Growth Trajectory</h3>
+  <div class="chart-wrap chart-tall">
+    <canvas id="projChart"></canvas>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <h3 class="chart-title">Annual Savings (Projected)</h3>
+    <div class="chart-wrap">
+      <canvas id="annualChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3 class="chart-title">Monthly Cash Flow (Actual)</h3>
+    <div class="chart-wrap">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="goals-projection" id="goalProjection">
+  <h3 class="section-title">Life Goals Timeline</h3>
+  <div id="goalsTimeline"></div>
+</div>
+
+<script>
+const fmt = n => '$' + Math.round(n).toLocaleString();
+
+async function loadProjection() {
+  const data = await fetch('/api/projection').then(r => r.json());
+  const { projection, monthly, avgMonthlySavings, retirementYear, goals } = data;
+
+  document.getElementById('projMonthly').textContent = fmt(avgMonthlySavings);
+  document.getElementById('projAnnual').textContent = fmt(avgMonthlySavings * 12);
+  document.getElementById('projYear').textContent = retirementYear;
+
+  const retPoint = projection.find(p => p.isRetirement);
+  if (retPoint) document.getElementById('projRetirement').textContent = fmt(retPoint.portfolio);
+
+  // Main projection chart
+  const projCtx = document.getElementById('projChart').getContext('2d');
+  const labels = projection.map(p => p.year);
+  const portfolioData = projection.map(p => p.portfolio);
+
+  // Goal annotations
+  const goalDatasets = (goals || []).map(g => ({
+    label: g.name,
+    data: labels.map(yr => yr === g.targetYear ? g.targetAmount : null),
+    type: 'scatter',
+    pointStyle: 'triangle',
+    pointRadius: 10,
+    backgroundColor: g.color || '#f59e0b',
+    borderColor: g.color || '#f59e0b'
+  }));
+
+  new Chart(projCtx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Portfolio Value',
+          data: portfolioData,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: labels.map(yr => yr === retirementYear ? 8 : 2),
+          pointBackgroundColor: labels.map(yr => yr === retirementYear ? '#f59e0b' : '#10b981')
+        },
+        ...goalDatasets
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8' } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.raw).toLocaleString()
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#64748b', callback: v => '$' + (v/1000000).toFixed(1) + 'M' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Annual savings chart
+  const annCtx = document.getElementById('annualChart').getContext('2d');
+  new Chart(annCtx, {
+    type: 'bar',
+    data: {
+      labels: projection.slice(0, 20).map(p => p.year),
+      datasets: [{ label: 'Annual Savings', data: projection.slice(0,20).map(p => p.annualSavings), backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Monthly actual
+  const mCtx = document.getElementById('monthlyChart').getContext('2d');
+  new Chart(mCtx, {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => m.label),
+      datasets: [
+        { label: 'Income', data: monthly.map(m => m.income), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
+        { label: 'Expenses', data: monthly.map(m => m.expenses), backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Goals timeline
+  const tl = document.getElementById('goalsTimeline');
+  if (!goals || goals.length === 0) {
+    tl.innerHTML = '<p class="empty-msg">No goals set. <a href="/goals">Add life goals →</a></p>';
+  } else {
+    const currentYear = new Date().getFullYear();
+    tl.innerHTML = goals.sort((a,b) => a.targetYear - b.targetYear).map(g => {
+      const pct = Math.min(100, Math.round((g.currentSaved / g.targetAmount) * 100));
+      const portAtGoal = projection.find(p => p.year === g.targetYear);
+      const portfolioThen = portAtGoal ? portAtGoal.portfolio : 0;
+      const canAfford = portfolioThen >= g.targetAmount;
+      return `<div class="timeline-item">
+        <div class="timeline-dot" style="background:${g.color}"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <strong>${g.name}</strong>
+              <span class="timeline-year">${g.targetYear} · ${g.targetYear - currentYear} years away</span>
+            </div>
+            <div class="timeline-right">
+              <span class="goal-amount">${fmt(g.targetAmount)}</span>
+              <span class="afford-tag ${canAfford ? 'can-afford' : 'cant-afford'}">${canAfford ? '✓ On Track' : '⚠ Review'}</span>
+            </div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+          <div class="timeline-footer">
+            <span>Saved: ${fmt(g.currentSaved)} (${pct}%)</span>
+            <span>Portfolio at that time: ~${fmt(portfolioThen)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+loadProjection();
+</script>
+
+<%- include('partials/footer') %>

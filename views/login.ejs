@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinTracker — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-glow"></div>
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">₹</div>
+        <h1>FinTracker</h1>
+        <p>Your private financial command center</p>
+      </div>
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+      <form method="POST" action="/login" class="login-form">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Enter your password" autofocus required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Enter Dashboard</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

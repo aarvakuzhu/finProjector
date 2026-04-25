@@ -1,0 +1,99 @@
+<%- include('partials/header', { title: 'Settings', page: 'settings' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Settings & Assumptions</h1>
+    <p class="page-sub">Personalize the projection model to your situation</p>
+  </div>
+</div>
+
+<div class="settings-grid">
+  <div class="settings-section">
+    <h3>Personal Profile</h3>
+    <div class="form-group">
+      <label>Your Current Age</label>
+      <input type="number" id="currentAge" placeholder="35">
+    </div>
+    <div class="form-group">
+      <label>Target Retirement Age</label>
+      <input type="number" id="retirementAge" placeholder="65">
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>Current Financial Position</h3>
+    <div class="form-group">
+      <label>Total Savings / Cash ($)</label>
+      <div class="input-wrap"><span>$</span><input type="number" id="currentSavings" placeholder="0"></div>
+    </div>
+    <div class="form-group">
+      <label>Total Investment Portfolio ($)<br><small>401k + IRA + Brokerage + HSA</small></label>
+      <div class="input-wrap"><span>$</span><input type="number" id="currentInvestments" placeholder="0"></div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3>Growth Assumptions</h3>
+    <div class="form-group">
+      <label>Annual Investment Return (%)</label>
+      <input type="number" id="annualReturnRate" placeholder="7" step="0.5">
+      <small>Historical avg: 7% (S&P 500 inflation-adjusted)</small>
+    </div>
+    <div class="form-group">
+      <label>Inflation Rate (%)</label>
+      <input type="number" id="inflationRate" placeholder="3" step="0.5">
+    </div>
+    <div class="form-group">
+      <label>Annual Salary Growth (%)</label>
+      <input type="number" id="salaryGrowthRate" placeholder="4" step="0.5">
+    </div>
+  </div>
+
+  <div class="settings-section wide">
+    <div class="settings-save-row">
+      <div id="saveStatus"></div>
+      <button class="btn btn-primary" id="btnSaveSettings">Save Settings</button>
+    </div>
+    <div class="assumptions-note">
+      <strong>How projections work:</strong>
+      Your average monthly net savings (income − expenses) over the last 6 recorded months is used as the base savings rate.
+      This grows annually by the salary growth rate. The portfolio compounds at the annual return rate.
+      All life goals are plotted as milestones on the chart.
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadSettings() {
+  const p = await fetch('/api/profile').then(r => r.json());
+  document.getElementById('currentAge').value = p.currentAge || '';
+  document.getElementById('retirementAge').value = p.retirementAge || '';
+  document.getElementById('currentSavings').value = p.currentSavings || '';
+  document.getElementById('currentInvestments').value = p.currentInvestments || '';
+  document.getElementById('annualReturnRate').value = p.annualReturnRate || '';
+  document.getElementById('inflationRate').value = p.inflationRate || '';
+  document.getElementById('salaryGrowthRate').value = p.salaryGrowthRate || '';
+}
+
+document.getElementById('btnSaveSettings').addEventListener('click', async () => {
+  const body = {
+    currentAge: +document.getElementById('currentAge').value || 35,
+    retirementAge: +document.getElementById('retirementAge').value || 65,
+    currentSavings: +document.getElementById('currentSavings').value || 0,
+    currentInvestments: +document.getElementById('currentInvestments').value || 0,
+    annualReturnRate: +document.getElementById('annualReturnRate').value || 7,
+    inflationRate: +document.getElementById('inflationRate').value || 3,
+    salaryGrowthRate: +document.getElementById('salaryGrowthRate').value || 4
+  };
+  const btn = document.getElementById('btnSaveSettings');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  btn.textContent = 'Save Settings'; btn.disabled = false;
+  document.getElementById('saveStatus').innerHTML = '<span class="positive">✓ Saved successfully</span>';
+  setTimeout(() => document.getElementById('saveStatus').innerHTML = '', 3000);
+});
+
+loadSettings();
+</script>
+
+<%- include('partials/footer') %>

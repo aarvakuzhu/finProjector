@@ -1,0 +1,128 @@
+<%- include('partials/header', { title: 'Dashboard', page: 'dashboard' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">Your financial overview at a glance</p>
+  </div>
+  <div class="header-actions">
+    <a href="/monthly" class="btn btn-primary">+ Add Month</a>
+  </div>
+</div>
+
+<div class="stats-grid" id="statsGrid">
+  <div class="stat-card" id="statIncome">
+    <div class="stat-label">Last Month Income</div>
+    <div class="stat-value" id="lastIncome">—</div>
+    <div class="stat-sub">Total earnings</div>
+  </div>
+  <div class="stat-card" id="statExpenses">
+    <div class="stat-label">Last Month Expenses</div>
+    <div class="stat-value" id="lastExpenses">—</div>
+    <div class="stat-sub">Total outflow</div>
+  </div>
+  <div class="stat-card highlight" id="statSaved">
+    <div class="stat-label">Last Month Saved</div>
+    <div class="stat-value" id="lastSaved">—</div>
+    <div class="stat-sub">Net surplus</div>
+  </div>
+  <div class="stat-card" id="statYTD">
+    <div class="stat-label">YTD Savings</div>
+    <div class="stat-value" id="ytdSaved">—</div>
+    <div class="stat-sub" id="ytdSub">This year</div>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card wide">
+    <h3 class="chart-title">Income vs Expenses — Last 12 Months</h3>
+    <div class="chart-wrap">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-card">
+    <h3 class="chart-title">YTD Breakdown</h3>
+    <div class="chart-wrap chart-wrap-sm">
+      <canvas id="breakdownChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3 class="chart-title">Goals Progress</h3>
+    <div id="goalsList" class="goals-mini"></div>
+  </div>
+</div>
+
+<script>
+const fmt = n => '$' + Math.abs(Math.round(n)).toLocaleString();
+const fmtSigned = n => (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n)).toLocaleString();
+
+async function loadDashboard() {
+  const data = await fetch('/api/summary').then(r => r.json());
+
+  document.getElementById('lastIncome').textContent = fmt(data.lastMonthIncome);
+  document.getElementById('lastExpenses').textContent = fmt(data.lastMonthExpenses);
+  document.getElementById('lastSaved').textContent = fmtSigned(data.lastMonthSaved);
+  document.getElementById('lastSaved').className = 'stat-value ' + (data.lastMonthSaved >= 0 ? 'positive' : 'negative');
+  document.getElementById('ytdSaved').textContent = fmtSigned(data.ytdSaved);
+  document.getElementById('ytdSaved').className = 'stat-value ' + (data.ytdSaved >= 0 ? 'positive' : 'negative');
+
+  // Trend Chart
+  const trendCtx = document.getElementById('trendChart').getContext('2d');
+  new Chart(trendCtx, {
+    type: 'bar',
+    data: {
+      labels: data.trend.map(t => t.label),
+      datasets: [
+        { label: 'Income', data: data.trend.map(t => t.income), backgroundColor: 'rgba(16, 185, 129, 0.7)', borderRadius: 4 },
+        { label: 'Expenses', data: data.trend.map(t => t.expenses), backgroundColor: 'rgba(239, 68, 68, 0.7)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8' } } },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Breakdown donut
+  const bCtx = document.getElementById('breakdownChart').getContext('2d');
+  new Chart(bCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Saved', 'Expenses'],
+      datasets: [{ data: [Math.max(0, data.ytdSaved), data.ytdExpenses], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8' } },
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString() } }
+      }
+    }
+  });
+
+  // Goals
+  const gl = document.getElementById('goalsList');
+  if (!data.goals || data.goals.length === 0) {
+    gl.innerHTML = '<p class="empty-msg">No goals set. <a href="/goals">Add goals →</a></p>';
+  } else {
+    gl.innerHTML = data.goals.map(g => {
+      const pct = Math.min(100, Math.round((g.currentSaved / g.targetAmount) * 100));
+      return `<div class="goal-item">
+        <div class="goal-header"><span>${g.name}</span><span>${fmt(g.currentSaved)} / ${fmt(g.targetAmount)}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+        <div class="goal-footer"><span>${g.targetYear}</span><span>${pct}%</span></div>
+      </div>`;
+    }).join('');
+  }
+}
+loadDashboard();
+</script>
+
+<%- include('partials/footer') %>

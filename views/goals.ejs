@@ -1,0 +1,185 @@
+<%- include('partials/header', { title: 'Life Goals', page: 'goals' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Life Goals</h1>
+    <p class="page-sub">Track your big financial milestones — college, weddings, and more</p>
+  </div>
+  <button class="btn btn-primary" id="btnAddGoal">+ Add Goal</button>
+</div>
+
+<div class="goals-grid" id="goalsGrid">
+  <p class="empty-msg loading-msg">Loading goals...</p>
+</div>
+
+<!-- Goal Modal -->
+<div class="modal-overlay" id="modalOverlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add Goal</h3>
+      <button class="modal-close" id="btnModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Goal Name</label>
+        <input type="text" id="goalName" placeholder="e.g. College - Arjun">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="goalCategory">
+            <option value="college">🎓 College</option>
+            <option value="wedding">💍 Wedding</option>
+            <option value="house">🏠 House</option>
+            <option value="travel">✈️ Travel</option>
+            <option value="emergency">🛡️ Emergency Fund</option>
+            <option value="other">⭐ Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Year</label>
+          <input type="number" id="goalYear" placeholder="2035">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Target Amount ($)</label>
+          <input type="number" id="goalAmount" placeholder="100000">
+        </div>
+        <div class="form-group">
+          <label>Amount Saved So Far ($)</label>
+          <input type="number" id="goalSaved" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Color</label>
+        <div class="color-picks">
+          <% ['#10b981','#f59e0b','#6366f1','#ef4444','#ec4899','#14b8a6','#f97316','#8b5cf6'].forEach(c => { %>
+            <div class="color-pick" style="background:<%= c %>" data-color="<%= c %>"></div>
+          <% }) %>
+        </div>
+        <input type="hidden" id="goalColor" value="#f59e0b">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnModalCancel">Cancel</button>
+      <button class="btn btn-danger" id="btnDeleteGoal" style="display:none">Delete</button>
+      <button class="btn btn-primary" id="btnSaveGoal">Save Goal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const fmt = n => '$' + Math.round(n).toLocaleString();
+let profile = null;
+let editIndex = -1;
+
+const ICONS = { college:'🎓', wedding:'💍', house:'🏠', travel:'✈️', emergency:'🛡️', other:'⭐' };
+
+async function loadGoals() {
+  profile = await fetch('/api/profile').then(r => r.json());
+  renderGoals();
+}
+
+function renderGoals() {
+  const grid = document.getElementById('goalsGrid');
+  const goals = profile.goals || [];
+  if (goals.length === 0) {
+    grid.innerHTML = '<p class="empty-msg">No goals yet. Add your first financial milestone!</p>';
+    return;
+  }
+  grid.innerHTML = goals.map((g, i) => {
+    const pct = Math.min(100, Math.round((g.currentSaved / g.targetAmount) * 100));
+    const remaining = g.targetAmount - g.currentSaved;
+    const currentYear = new Date().getFullYear();
+    const yearsLeft = g.targetYear - currentYear;
+    const perYear = yearsLeft > 0 ? remaining / yearsLeft : remaining;
+    return `<div class="goal-card" data-idx="${i}">
+      <div class="goal-card-header" style="border-top: 3px solid ${g.color}">
+        <div class="goal-icon">${ICONS[g.category] || '⭐'}</div>
+        <div>
+          <div class="goal-name">${g.name}</div>
+          <div class="goal-cat">${g.category} · ${g.targetYear}</div>
+        </div>
+        <button class="goal-edit-btn" onclick="openEdit(${i})">✏️</button>
+      </div>
+      <div class="goal-amounts">
+        <div><div class="ga-label">Target</div><div class="ga-val">${fmt(g.targetAmount)}</div></div>
+        <div><div class="ga-label">Saved</div><div class="ga-val positive">${fmt(g.currentSaved)}</div></div>
+        <div><div class="ga-label">Remaining</div><div class="ga-val negative">${fmt(remaining)}</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+      <div class="goal-footer">
+        <span>${pct}% complete</span>
+        <span>~${fmt(perYear)}/yr needed</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(idx = -1) {
+  editIndex = idx;
+  const g = idx >= 0 ? profile.goals[idx] : null;
+  document.getElementById('modalTitle').textContent = idx >= 0 ? 'Edit Goal' : 'Add Goal';
+  document.getElementById('goalName').value = g ? g.name : '';
+  document.getElementById('goalCategory').value = g ? g.category : 'college';
+  document.getElementById('goalYear').value = g ? g.targetYear : new Date().getFullYear() + 10;
+  document.getElementById('goalAmount').value = g ? g.targetAmount : '';
+  document.getElementById('goalSaved').value = g ? g.currentSaved : 0;
+  document.getElementById('goalColor').value = g ? g.color : '#f59e0b';
+  document.querySelectorAll('.color-pick').forEach(el => {
+    el.classList.toggle('selected', el.dataset.color === (g ? g.color : '#f59e0b'));
+  });
+  document.getElementById('btnDeleteGoal').style.display = idx >= 0 ? '' : 'none';
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
+
+window.openEdit = openModal;
+document.getElementById('btnAddGoal').addEventListener('click', () => openModal());
+document.getElementById('btnModalClose').addEventListener('click', closeModal);
+document.getElementById('btnModalCancel').addEventListener('click', closeModal);
+
+document.querySelectorAll('.color-pick').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.color-pick').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('goalColor').value = el.dataset.color;
+  });
+});
+
+document.getElementById('btnSaveGoal').addEventListener('click', async () => {
+  const goal = {
+    name: document.getElementById('goalName').value,
+    category: document.getElementById('goalCategory').value,
+    targetYear: +document.getElementById('goalYear').value,
+    targetAmount: +document.getElementById('goalAmount').value,
+    currentSaved: +document.getElementById('goalSaved').value || 0,
+    color: document.getElementById('goalColor').value
+  };
+  if (!goal.name || !goal.targetAmount) return alert('Please fill name and target amount.');
+  const goals = [...(profile.goals || [])];
+  if (editIndex >= 0) goals[editIndex] = goal; else goals.push(goal);
+  profile = await fetch('/api/profile', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ...profile, goals })
+  }).then(r => r.json());
+  closeModal(); renderGoals();
+});
+
+document.getElementById('btnDeleteGoal').addEventListener('click', async () => {
+  if (!confirm('Remove this goal?')) return;
+  const goals = [...(profile.goals || [])];
+  goals.splice(editIndex, 1);
+  profile = await fetch('/api/profile', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ ...profile, goals })
+  }).then(r => r.json());
+  closeModal(); renderGoals();
+});
+
+loadGoals();
+</script>
+
+<%- include('partials/footer') %>
