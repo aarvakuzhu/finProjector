@@ -22,17 +22,19 @@ mongoose.connect(process.env.MONGODB_URI)
       console.log('Auto-seeded family profile and goals');
     }
 
-    // Auto-seed April 2026 income & investment entry if not present
+    // Auto-seed April 2026 monthly entry
+    // Income:      Ash $203k/yr + KP $55k/yr + rental $2,350/mo
+    // Investments: Ash 401k 10% ($1,692) + Ash ROTH 5% ($846) + KP 401k 7% ($321)
     const existingApril = await MonthlyEntry.findOne({ year: 2026, month: 4 });
     if (!existingApril) {
       await MonthlyEntry.create({
         year: 2026, month: 4,
         income: {
-          salary: 16917,
+          salary: 16917,    // Ash $203,000 / 12
           bonus: 0,
-          rental: 2350,
+          rental: 2350,     // 1 rental property
           investments: 0,
-          other: 4583
+          other: 4583       // KP $55,000 / 12
         },
         expenses: {
           housing: 0, utilities: 0, groceries: 0, dining: 0,
@@ -41,11 +43,14 @@ mongoose.connect(process.env.MONGODB_URI)
           subscriptions: 0, childcare: 0, other: 0
         },
         investments: {
-          retirement401k: 1692,
-          ira: 846,
-          brokerage: 0, savings: 0, hsa: 0, other: 0
+          retirement401k: 2013,  // Ash 401k $1,692 + KP 401k $321
+          ira: 846,              // Ash ROTH IRA 5% post-tax
+          brokerage: 0,
+          savings: 0,
+          hsa: 0,
+          other: 0
         },
-        notes: 'April 2026 — first tracked month. Ash $203k + KP $55k + rental $2,350. 401k 10% + ROTH 5%. Expenses to be filled in.'
+        notes: 'April 2026 — first tracked month. Ash $203k + KP $55k + rental $2,350. Ash: 401k 10% + ROTH 5%. KP: 401k 7%. Expenses to be filled in.'
       });
       console.log('Auto-seeded April 2026 monthly entry');
     }
