@@ -8,9 +8,19 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// MongoDB Connection
+// MongoDB Connection + auto-seed
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
+  .then(async () => {
+    console.log('MongoDB connected');
+    // Auto-seed profile/goals on first run (if no profile exists)
+    const { Profile } = require('./models');
+    const existing = await Profile.findById('main');
+    if (!existing) {
+      const seedData = require('./config/seedData');
+      await Profile.create(seedData);
+      console.log('✅ Auto-seeded family profile and goals');
+    }
+  })
   .catch(err => console.error('MongoDB error:', err));
 
 // Middleware
