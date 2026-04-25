@@ -12,13 +12,42 @@ const PORT = process.env.PORT || 3000;
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('MongoDB connected');
-    // Auto-seed profile/goals on first run (if no profile exists)
-    const { Profile } = require('./models');
-    const existing = await Profile.findById('main');
-    if (!existing) {
+    const { Profile, MonthlyEntry } = require('./models');
+
+    // Auto-seed profile + goals if first run
+    const existingProfile = await Profile.findById('main');
+    if (!existingProfile) {
       const seedData = require('./config/seedData');
       await Profile.create(seedData);
-      console.log('✅ Auto-seeded family profile and goals');
+      console.log('Auto-seeded family profile and goals');
+    }
+
+    // Auto-seed April 2026 income & investment entry if not present
+    const existingApril = await MonthlyEntry.findOne({ year: 2026, month: 4 });
+    if (!existingApril) {
+      await MonthlyEntry.create({
+        year: 2026, month: 4,
+        income: {
+          salary: 16917,
+          bonus: 0,
+          rental: 2350,
+          investments: 0,
+          other: 4583
+        },
+        expenses: {
+          housing: 0, utilities: 0, groceries: 0, dining: 0,
+          transport: 0, insurance: 0, healthcare: 0, education: 0,
+          entertainment: 0, clothing: 0, travel: 0,
+          subscriptions: 0, childcare: 0, other: 0
+        },
+        investments: {
+          retirement401k: 1692,
+          ira: 846,
+          brokerage: 0, savings: 0, hsa: 0, other: 0
+        },
+        notes: 'April 2026 — first tracked month. Ash $203k + KP $55k + rental $2,350. 401k 10% + ROTH 5%. Expenses to be filled in.'
+      });
+      console.log('Auto-seeded April 2026 monthly entry');
     }
   })
   .catch(err => console.error('MongoDB error:', err));
