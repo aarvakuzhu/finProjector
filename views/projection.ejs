@@ -3,32 +3,41 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Retirement Projection</h1>
-    <p class="page-sub">Your savings trajectory from today to retirement — and beyond</p>
+    <p class="page-sub">Your savings trajectory — cash stack and investments — from today to retirement</p>
   </div>
   <a href="/settings" class="btn btn-ghost">Adjust Assumptions →</a>
 </div>
 
-<div class="projection-summary" id="projSummary">
+<div id="noDataBanner" class="no-data-banner" style="display:none">
+  <strong>No monthly data yet.</strong> Enter at least one month to generate projections. <a href="/monthly">Add data →</a>
+</div>
+
+<div class="projection-summary">
   <div class="proj-stat">
-    <div class="proj-label">Avg Monthly Savings</div>
+    <div class="proj-label">Avg Monthly Net Savings</div>
     <div class="proj-val" id="projMonthly">—</div>
+    <div class="proj-sub">income − expenses</div>
   </div>
   <div class="proj-stat">
-    <div class="proj-label">Avg Annual Savings</div>
-    <div class="proj-val" id="projAnnual">—</div>
+    <div class="proj-label">Of Which: Cash Saved</div>
+    <div class="proj-val positive" id="projCash">—</div>
+    <div class="proj-sub">liquid, not invested</div>
+  </div>
+  <div class="proj-stat">
+    <div class="proj-label">Of Which: Invested</div>
+    <div class="proj-val positive" id="projInvested">—</div>
+    <div class="proj-sub">401k / IRA / brokerage</div>
   </div>
   <div class="proj-stat highlight">
-    <div class="proj-label">Projected at Retirement</div>
+    <div class="proj-label">Total Wealth at Retirement</div>
     <div class="proj-val" id="projRetirement">—</div>
-  </div>
-  <div class="proj-stat">
-    <div class="proj-label">Retirement Year</div>
-    <div class="proj-val" id="projYear">—</div>
+    <div class="proj-sub" id="projYear">—</div>
   </div>
 </div>
 
 <div class="chart-card fullwidth">
-  <h3 class="chart-title">Portfolio Growth Trajectory</h3>
+  <h3 class="chart-title">Wealth Trajectory to Retirement</h3>
+  <p class="chart-note">Green = investment portfolio (compounding) · Blue = cash savings stack · Yellow dot = retirement</p>
   <div class="chart-wrap chart-tall">
     <canvas id="projChart"></canvas>
   </div>
@@ -36,127 +45,140 @@
 
 <div class="charts-row">
   <div class="chart-card">
-    <h3 class="chart-title">Annual Savings (Projected)</h3>
+    <h3 class="chart-title">Cash Stack Growth (Projected)</h3>
+    <p class="chart-note">How your liquid savings accumulate year over year</p>
     <div class="chart-wrap">
-      <canvas id="annualChart"></canvas>
+      <canvas id="cashStackChart"></canvas>
     </div>
   </div>
   <div class="chart-card">
-    <h3 class="chart-title">Monthly Cash Flow (Actual)</h3>
+    <h3 class="chart-title">Monthly Cash Surplus (Actual)</h3>
+    <p class="chart-note">What you kept in cash after investing each month</p>
     <div class="chart-wrap">
       <canvas id="monthlyChart"></canvas>
     </div>
   </div>
 </div>
 
-<div class="goals-projection" id="goalProjection">
+<div class="goals-projection">
   <h3 class="section-title">Life Goals Timeline</h3>
   <div id="goalsTimeline"></div>
 </div>
 
 <script>
-const fmt = n => '$' + Math.round(n).toLocaleString();
+const fmt = n => '$' + Math.round(n || 0).toLocaleString();
 
 async function loadProjection() {
-  const data = await fetch('/api/projection').then(r => r.json());
-  const { projection, monthly, avgMonthlySavings, retirementYear, goals } = data;
+  let data;
+  try {
+    const res = await fetch('/api/projection');
+    data = await res.json();
+    if (data.error) throw new Error(data.error);
+  } catch(e) {
+    console.error('Projection error:', e);
+    document.getElementById('noDataBanner').style.display = '';
+    return;
+  }
+
+  const { projection = [], monthly = [], monthlyCumulative = [], avgMonthlySavings = 0,
+          avgMonthlyCash = 0, avgMonthlyInvested = 0, retirementYear, goals = [], hasData } = data;
+
+  if (!hasData) document.getElementById('noDataBanner').style.display = '';
 
   document.getElementById('projMonthly').textContent = fmt(avgMonthlySavings);
-  document.getElementById('projAnnual').textContent = fmt(avgMonthlySavings * 12);
-  document.getElementById('projYear').textContent = retirementYear;
+  document.getElementById('projCash').textContent = fmt(avgMonthlyCash);
+  document.getElementById('projInvested').textContent = fmt(avgMonthlyInvested);
+  document.getElementById('projYear').textContent = `Target retirement: ${retirementYear || '—'}`;
 
   const retPoint = projection.find(p => p.isRetirement);
-  if (retPoint) document.getElementById('projRetirement').textContent = fmt(retPoint.portfolio);
+  if (retPoint) document.getElementById('projRetirement').textContent = fmt(retPoint.totalWealth);
 
-  // Main projection chart
-  const projCtx = document.getElementById('projChart').getContext('2d');
-  const labels = projection.map(p => p.year);
-  const portfolioData = projection.map(p => p.portfolio);
-
-  // Goal annotations
-  const goalDatasets = (goals || []).map(g => ({
-    label: g.name,
-    data: labels.map(yr => yr === g.targetYear ? g.targetAmount : null),
-    type: 'scatter',
-    pointStyle: 'triangle',
-    pointRadius: 10,
-    backgroundColor: g.color || '#f59e0b',
-    borderColor: g.color || '#f59e0b'
-  }));
-
-  new Chart(projCtx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Portfolio Value',
-          data: portfolioData,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16,185,129,0.1)',
-          fill: true,
-          tension: 0.4,
-          pointRadius: labels.map(yr => yr === retirementYear ? 8 : 2),
-          pointBackgroundColor: labels.map(yr => yr === retirementYear ? '#f59e0b' : '#10b981')
-        },
-        ...goalDatasets
-      ]
+  const chartDefaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#94a3b8' } },
+      tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } }
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#94a3b8' } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ctx.dataset.label + ': $' + Math.round(ctx.raw).toLocaleString()
-          }
-        }
+    scales: {
+      x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { ticks: { color: '#64748b', callback: v => '$' + (v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v.toLocaleString()) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }
+  };
+
+  if (projection.length > 0) {
+    const labels = projection.map(p => p.year);
+
+    // Goal scatter datasets
+    const goalDatasets = goals.map(g => ({
+      label: g.name,
+      data: labels.map(yr => yr === g.targetYear ? g.targetAmount : null),
+      type: 'scatter',
+      pointStyle: 'triangle',
+      pointRadius: 10,
+      backgroundColor: g.color || '#f59e0b',
+      borderColor: g.color || '#f59e0b'
+    }));
+
+    // Main trajectory chart
+    new Chart(document.getElementById('projChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Investment Portfolio',
+            data: projection.map(p => p.portfolio),
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.08)',
+            fill: true, tension: 0.4,
+            pointRadius: labels.map(yr => yr === retirementYear ? 8 : 2),
+            pointBackgroundColor: labels.map(yr => yr === retirementYear ? '#f59e0b' : '#10b981')
+          },
+          {
+            label: 'Cash Stack',
+            data: projection.map(p => p.cashStack),
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.08)',
+            fill: true, tension: 0.4,
+            pointRadius: 2,
+            pointBackgroundColor: '#6366f1'
+          },
+          ...goalDatasets
+        ]
       },
-      scales: {
-        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#64748b', callback: v => '$' + (v/1000000).toFixed(1) + 'M' }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
-    }
-  });
+      options: { ...chartDefaults }
+    });
 
-  // Annual savings chart
-  const annCtx = document.getElementById('annualChart').getContext('2d');
-  new Chart(annCtx, {
-    type: 'bar',
-    data: {
-      labels: projection.slice(0, 20).map(p => p.year),
-      datasets: [{ label: 'Annual Savings', data: projection.slice(0,20).map(p => p.annualSavings), backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
-      scales: {
-        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
-    }
-  });
+    // Cash stack growth chart (first 20 years)
+    const first20 = projection.slice(0, 20);
+    new Chart(document.getElementById('cashStackChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: first20.map(p => p.year),
+        datasets: [
+          { label: 'Cash Added', data: first20.map(p => p.annualCash), backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4, stack: 'a' },
+          { label: 'Invested', data: first20.map(p => p.annualInvested), backgroundColor: 'rgba(16,185,129,0.5)', borderRadius: 4, stack: 'a' }
+        ]
+      },
+      options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, stacked: true }, y: { ...chartDefaults.scales.y, stacked: true } } }
+    });
+  }
 
-  // Monthly actual
-  const mCtx = document.getElementById('monthlyChart').getContext('2d');
-  new Chart(mCtx, {
-    type: 'bar',
-    data: {
-      labels: monthly.map(m => m.label),
-      datasets: [
-        { label: 'Income', data: monthly.map(m => m.income), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
-        { label: 'Expenses', data: monthly.map(m => m.expenses), backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
-      scales: {
-        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
-    }
-  });
+  // Monthly actual cash surplus
+  if (monthly.length > 0) {
+    new Chart(document.getElementById('monthlyChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: monthly.map(m => m.label),
+        datasets: [
+          { label: 'Cash Surplus', data: monthly.map(m => m.cashSurplus || 0), backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 },
+          { label: 'Invested', data: monthly.map(m => m.investments || 0), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 }
+        ]
+      },
+      options: { ...chartDefaults }
+    });
+  } else {
+    document.getElementById('monthlyChart').parentElement.innerHTML = '<p class="empty-msg" style="padding:40px;text-align:center">No monthly data yet. <a href="/monthly">Add months →</a></p>';
+  }
 
   // Goals timeline
   const tl = document.getElementById('goalsTimeline');
@@ -165,27 +187,33 @@ async function loadProjection() {
   } else {
     const currentYear = new Date().getFullYear();
     tl.innerHTML = goals.sort((a,b) => a.targetYear - b.targetYear).map(g => {
-      const pct = Math.min(100, Math.round((g.currentSaved / g.targetAmount) * 100));
-      const portAtGoal = projection.find(p => p.year === g.targetYear);
-      const portfolioThen = portAtGoal ? portAtGoal.portfolio : 0;
-      const canAfford = portfolioThen >= g.targetAmount;
+      const saved = g.currentSaved || 0;
+      const target = g.targetAmount || 1;
+      const pct = Math.min(100, Math.round((saved / target) * 100));
+      const portAtGoal = projection.find(p => p.year === g.targetYear) || {};
+      const totalThen = portAtGoal.totalWealth || 0;
+      const cashThen = portAtGoal.cashStack || 0;
+      const canAfford = totalThen >= target;
+      const yearsAway = (g.targetYear || currentYear) - currentYear;
+      const remaining = Math.max(0, target - saved);
+      const perMonth = yearsAway > 0 ? Math.round(remaining / (yearsAway * 12)) : remaining;
       return `<div class="timeline-item">
-        <div class="timeline-dot" style="background:${g.color}"></div>
+        <div class="timeline-dot" style="background:${g.color || '#f59e0b'}"></div>
         <div class="timeline-content">
           <div class="timeline-header">
             <div>
-              <strong>${g.name}</strong>
-              <span class="timeline-year">${g.targetYear} · ${g.targetYear - currentYear} years away</span>
+              <strong>${g.name || 'Goal'}</strong>
+              <span class="timeline-year">${g.targetYear} · ${yearsAway} years away</span>
             </div>
             <div class="timeline-right">
-              <span class="goal-amount">${fmt(g.targetAmount)}</span>
+              <span class="goal-amount">${fmt(target)}</span>
               <span class="afford-tag ${canAfford ? 'can-afford' : 'cant-afford'}">${canAfford ? '✓ On Track' : '⚠ Review'}</span>
             </div>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color || '#f59e0b'}"></div></div>
           <div class="timeline-footer">
-            <span>Saved: ${fmt(g.currentSaved)} (${pct}%)</span>
-            <span>Portfolio at that time: ~${fmt(portfolioThen)}</span>
+            <span>Saved: ${fmt(saved)} (${pct}%) · Need ~${fmt(perMonth)}/mo more</span>
+            <span>Total wealth then: ~${fmt(totalThen)} · Cash: ~${fmt(cashThen)}</span>
           </div>
         </div>
       </div>`;

@@ -10,26 +10,53 @@
   </div>
 </div>
 
-<div class="stats-grid" id="statsGrid">
-  <div class="stat-card" id="statIncome">
+<div id="noDataBanner" class="no-data-banner" style="display:none">
+  <strong>No monthly data yet.</strong> Start by entering this month's income and expenses. <a href="/monthly">Add first month →</a>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
     <div class="stat-label">Last Month Income</div>
     <div class="stat-value" id="lastIncome">—</div>
     <div class="stat-sub">Total earnings</div>
   </div>
-  <div class="stat-card" id="statExpenses">
+  <div class="stat-card">
     <div class="stat-label">Last Month Expenses</div>
     <div class="stat-value" id="lastExpenses">—</div>
     <div class="stat-sub">Total outflow</div>
   </div>
-  <div class="stat-card highlight" id="statSaved">
-    <div class="stat-label">Last Month Saved</div>
-    <div class="stat-value" id="lastSaved">—</div>
-    <div class="stat-sub">Net surplus</div>
+  <div class="stat-card highlight">
+    <div class="stat-label">Cash Saved Last Month</div>
+    <div class="stat-value" id="lastCash">—</div>
+    <div class="stat-sub">Liquid surplus (after investments)</div>
   </div>
-  <div class="stat-card" id="statYTD">
-    <div class="stat-label">YTD Savings</div>
-    <div class="stat-value" id="ytdSaved">—</div>
-    <div class="stat-sub" id="ytdSub">This year</div>
+  <div class="stat-card">
+    <div class="stat-label">Invested Last Month</div>
+    <div class="stat-value positive" id="lastInvested">—</div>
+    <div class="stat-sub">401k / IRA / Brokerage</div>
+  </div>
+</div>
+
+<div class="stats-grid" style="margin-top:-8px">
+  <div class="stat-card">
+    <div class="stat-label">YTD Income</div>
+    <div class="stat-value" id="ytdIncome">—</div>
+    <div class="stat-sub">This year total</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">YTD Expenses</div>
+    <div class="stat-value" id="ytdExpenses">—</div>
+    <div class="stat-sub">This year total</div>
+  </div>
+  <div class="stat-card highlight">
+    <div class="stat-label">YTD Cash Saved</div>
+    <div class="stat-value" id="ytdCash">—</div>
+    <div class="stat-sub">Liquid savings this year</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">YTD Invested</div>
+    <div class="stat-value positive" id="ytdInvested">—</div>
+    <div class="stat-sub">Into investments this year</div>
   </div>
 </div>
 
@@ -44,9 +71,9 @@
 
 <div class="charts-row">
   <div class="chart-card">
-    <h3 class="chart-title">YTD Breakdown</h3>
+    <h3 class="chart-title">Monthly Cash Surplus Trend</h3>
     <div class="chart-wrap chart-wrap-sm">
-      <canvas id="breakdownChart"></canvas>
+      <canvas id="cashChart"></canvas>
     </div>
   </div>
   <div class="chart-card">
@@ -56,56 +83,85 @@
 </div>
 
 <script>
-const fmt = n => '$' + Math.abs(Math.round(n)).toLocaleString();
-const fmtSigned = n => (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n)).toLocaleString();
+const fmt = n => '$' + Math.abs(Math.round(n || 0)).toLocaleString();
+const fmtSigned = n => (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n || 0)).toLocaleString();
 
 async function loadDashboard() {
-  const data = await fetch('/api/summary').then(r => r.json());
+  let data;
+  try {
+    const res = await fetch('/api/summary');
+    data = await res.json();
+    if (data.error) throw new Error(data.error);
+  } catch (e) {
+    console.error('Dashboard load error:', e);
+    document.getElementById('noDataBanner').style.display = '';
+    return;
+  }
 
-  document.getElementById('lastIncome').textContent = fmt(data.lastMonthIncome);
-  document.getElementById('lastExpenses').textContent = fmt(data.lastMonthExpenses);
-  document.getElementById('lastSaved').textContent = fmtSigned(data.lastMonthSaved);
-  document.getElementById('lastSaved').className = 'stat-value ' + (data.lastMonthSaved >= 0 ? 'positive' : 'negative');
-  document.getElementById('ytdSaved').textContent = fmtSigned(data.ytdSaved);
-  document.getElementById('ytdSaved').className = 'stat-value ' + (data.ytdSaved >= 0 ? 'positive' : 'negative');
+  if (!data.hasData) {
+    document.getElementById('noDataBanner').style.display = '';
+  }
 
-  // Trend Chart
-  const trendCtx = document.getElementById('trendChart').getContext('2d');
-  new Chart(trendCtx, {
-    type: 'bar',
-    data: {
-      labels: data.trend.map(t => t.label),
-      datasets: [
-        { label: 'Income', data: data.trend.map(t => t.income), backgroundColor: 'rgba(16, 185, 129, 0.7)', borderRadius: 4 },
-        { label: 'Expenses', data: data.trend.map(t => t.expenses), backgroundColor: 'rgba(239, 68, 68, 0.7)', borderRadius: 4 }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#94a3b8' } } },
-      scales: {
-        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+  const setVal = (id, val, signed) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = signed ? fmtSigned(val) : fmt(val);
+    if (signed) el.className = 'stat-value ' + (val >= 0 ? 'positive' : 'negative');
+  };
+
+  setVal('lastIncome', data.lastMonthIncome);
+  setVal('lastExpenses', data.lastMonthExpenses);
+  setVal('lastCash', data.lastMonthCash, true);
+  setVal('lastInvested', data.lastMonthInvested);
+  setVal('ytdIncome', data.ytdIncome);
+  setVal('ytdExpenses', data.ytdExpenses);
+  setVal('ytdCash', data.ytdCash, true);
+  setVal('ytdInvested', data.ytdInvested);
+
+  const trend = data.trend || [];
+
+  // Trend chart
+  if (trend.length > 0) {
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+      type: 'bar',
+      data: {
+        labels: trend.map(t => t.label),
+        datasets: [
+          { label: 'Income', data: trend.map(t => t.income || 0), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
+          { label: 'Expenses', data: trend.map(t => t.expenses || 0), backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
       }
-    }
-  });
+    });
 
-  // Breakdown donut
-  const bCtx = document.getElementById('breakdownChart').getContext('2d');
-  new Chart(bCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Saved', 'Expenses'],
-      datasets: [{ data: [Math.max(0, data.ytdSaved), data.ytdExpenses], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#94a3b8' } },
-        tooltip: { callbacks: { label: ctx => ' $' + ctx.raw.toLocaleString() } }
+    // Cash surplus chart
+    const cashCtx = document.getElementById('cashChart').getContext('2d');
+    new Chart(cashCtx, {
+      type: 'bar',
+      data: {
+        labels: trend.map(t => t.label),
+        datasets: [
+          { label: 'Cash Surplus', data: trend.map(t => t.cashSurplus || 0), backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#64748b', callback: v => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
       }
-    }
-  });
+    });
+  }
 
   // Goals
   const gl = document.getElementById('goalsList');
@@ -113,15 +169,16 @@ async function loadDashboard() {
     gl.innerHTML = '<p class="empty-msg">No goals set. <a href="/goals">Add goals →</a></p>';
   } else {
     gl.innerHTML = data.goals.map(g => {
-      const pct = Math.min(100, Math.round((g.currentSaved / g.targetAmount) * 100));
+      const pct = g.targetAmount > 0 ? Math.min(100, Math.round(((g.currentSaved || 0) / g.targetAmount) * 100)) : 0;
       return `<div class="goal-item">
-        <div class="goal-header"><span>${g.name}</span><span>${fmt(g.currentSaved)} / ${fmt(g.targetAmount)}</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color}"></div></div>
+        <div class="goal-header"><span>${g.name || 'Goal'}</span><span>${fmt(g.currentSaved)} / ${fmt(g.targetAmount)}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${g.color || '#f59e0b'}"></div></div>
         <div class="goal-footer"><span>${g.targetYear}</span><span>${pct}%</span></div>
       </div>`;
     }).join('');
   }
 }
+
 loadDashboard();
 </script>
 

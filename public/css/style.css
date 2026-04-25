@@ -359,3 +359,21 @@ body {
 .empty-msg { color: var(--text-muted); font-size: 13px; padding: 12px 0; }
 .empty-msg a { color: var(--accent); text-decoration: none; }
 .loading-msg { padding: 40px; text-align: center; }
+
+/* ── No Data Banner ─────────────────── */
+.no-data-banner {
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #fcd34d;
+}
+.no-data-banner a { color: var(--warning); font-weight: 600; }
+
+/* ── Chart note ─────────────────────── */
+.chart-note { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; margin-top: -10px; }
+
+/* ── Projection sub ─────────────────── */
+.proj-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
