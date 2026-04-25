@@ -1,0 +1,340 @@
+<%- include('partials/header', { title: 'Rental Property', page: 'rental' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Rental Property</h1>
+    <p class="page-sub">Track income, expenses and net cash flow for your rental</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" id="btnSave">Save Changes</button>
+  </div>
+</div>
+
+<div id="saveMsg" class="save-toast" style="display:none">✓ Saved</div>
+
+<!-- ── P&L Summary Cards ──────────────────────────────────── -->
+<div class="rental-summary" id="rentalSummary">
+  <div class="rscard income-card">
+    <div class="rscard-label">Monthly Rent</div>
+    <div class="rscard-val positive" id="summRent">—</div>
+    <div class="rscard-sub">Gross income</div>
+  </div>
+  <div class="rscard">
+    <div class="rscard-label">Monthly Expenses</div>
+    <div class="rscard-val negative" id="summExpenses">—</div>
+    <div class="rscard-sub">All costs amortized</div>
+  </div>
+  <div class="rscard highlight-card" id="netCard">
+    <div class="rscard-label">Net Cash Flow</div>
+    <div class="rscard-val" id="summNet">—</div>
+    <div class="rscard-sub" id="summNetSub">per month</div>
+  </div>
+  <div class="rscard">
+    <div class="rscard-label">Annual Net</div>
+    <div class="rscard-val" id="summAnnual">—</div>
+    <div class="rscard-sub">Cash flow per year</div>
+  </div>
+</div>
+
+<!-- ── Property Details ───────────────────────────────────── -->
+<div class="rental-grid">
+
+  <div class="rental-section">
+    <div class="rental-section-title">🏠 Property Details</div>
+    <div class="form-group">
+      <label>Property Name</label>
+      <input type="text" id="propName" placeholder="e.g. Main Street House">
+    </div>
+    <div class="form-group">
+      <label>Address</label>
+      <input type="text" id="propAddress" placeholder="Street address">
+    </div>
+    <div class="form-group">
+      <label>Monthly Rent Collected</label>
+      <div class="input-wrap"><span>$</span><input type="number" id="monthlyRent" placeholder="2350"></div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="propNotes" placeholder="Any notes about this property..."></textarea>
+    </div>
+  </div>
+
+  <div class="rental-section">
+    <div class="rental-section-title">🏦 Monthly Fixed Expenses</div>
+    <div class="form-group">
+      <label>Mortgage + Escrow</label>
+      <div class="input-wrap"><span>$</span><input type="number" id="mortgage" placeholder="2160.98" step="0.01"></div>
+      <small>Principal, interest, taxes, insurance</small>
+    </div>
+    <div class="rental-breakdown" id="monthlyBreakdown">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <div class="rental-section">
+    <div class="rental-section-title">📅 Annual Expenses</div>
+    <small class="section-note">Shown as monthly equivalent (÷12)</small>
+    <div class="annual-fields">
+      <div class="field-row">
+        <label>HOA</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_hoa" placeholder="500"></div>
+      </div>
+      <div class="field-row">
+        <label>Rental Management Fee</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_rentalFee" placeholder="300"></div>
+      </div>
+      <div class="field-row">
+        <label>Trugreen / Lawn Care</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_trugreen" placeholder="300"></div>
+      </div>
+      <div class="field-row">
+        <label>Termite Treatment</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_termite" placeholder="200"></div>
+      </div>
+      <div class="field-row">
+        <label>Mowing</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_mowing" placeholder="630"></div>
+      </div>
+      <div class="field-row">
+        <label>Maintenance / Repairs</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_maintenance" placeholder="3000"></div>
+      </div>
+      <div class="field-row">
+        <label>Other Annual</label>
+        <div class="input-wrap"><span>$</span><input type="number" id="ann_other" placeholder="0"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rental-section">
+    <div class="rental-section-title">🔄 Multi-Year Expenses</div>
+    <small class="section-note">Amortized monthly (total ÷ years ÷ 12)</small>
+    <div id="multiYearList"></div>
+    <button class="btn btn-ghost btn-sm" id="btnAddMulti" style="margin-top:12px">+ Add Expense</button>
+  </div>
+
+</div>
+
+<!-- ── Expense Breakdown Chart ────────────────────────────── -->
+<div class="chart-card fullwidth" style="margin-top:20px">
+  <h3 class="chart-title">Monthly Expense Breakdown</h3>
+  <div class="rental-chart-row">
+    <div class="chart-wrap chart-wrap-sm" style="max-width:320px">
+      <canvas id="expenseDonut"></canvas>
+    </div>
+    <div class="expense-table" id="expenseTable"></div>
+  </div>
+</div>
+
+<script>
+const PROP_ID = 'property_1';
+const fmt = n => '$' + Math.abs(parseFloat(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const fmtS = n => (n >= 0 ? '+' : '-') + '$' + Math.abs(parseFloat(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+let multiYearExpenses = [];
+
+// ── Load ───────────────────────────────────────────────────
+async function load() {
+  try {
+    const prop = await fetch(`/api/rental/${PROP_ID}`).then(r => r.json());
+    if (prop && prop._id) {
+      document.getElementById('propName').value = prop.name || '';
+      document.getElementById('propAddress').value = prop.address || '';
+      document.getElementById('monthlyRent').value = prop.monthlyRent || '';
+      document.getElementById('mortgage').value = prop.mortgage || '';
+      document.getElementById('propNotes').value = prop.notes || '';
+      const ae = prop.annualExpenses || {};
+      document.getElementById('ann_hoa').value = ae.hoa || '';
+      document.getElementById('ann_rentalFee').value = ae.rentalFee || '';
+      document.getElementById('ann_trugreen').value = ae.trugreen || '';
+      document.getElementById('ann_termite').value = ae.termite || '';
+      document.getElementById('ann_mowing').value = ae.mowing || '';
+      document.getElementById('ann_maintenance').value = ae.maintenance || '';
+      document.getElementById('ann_other').value = ae.other || '';
+      multiYearExpenses = prop.multiYearExpenses || [];
+    } else {
+      // Pre-fill with known data
+      document.getElementById('propName').value = 'Rental Property 1';
+      document.getElementById('monthlyRent').value = 2350;
+      document.getElementById('mortgage').value = 2160.98;
+      document.getElementById('ann_hoa').value = 500;
+      document.getElementById('ann_rentalFee').value = 300;
+      document.getElementById('ann_trugreen').value = 300;
+      document.getElementById('ann_termite').value = 200;
+      document.getElementById('ann_mowing').value = 630;
+      document.getElementById('ann_maintenance').value = 3000;
+      multiYearExpenses = [{ name: 'Home Warranty', totalCost: 2100, years: 5 }];
+    }
+    renderMultiYear();
+    recalc();
+  } catch(e) {
+    console.error('Load error:', e);
+  }
+}
+
+// ── Recalculate P&L ────────────────────────────────────────
+function recalc() {
+  const rent = parseFloat(document.getElementById('monthlyRent').value) || 0;
+  const mortgage = parseFloat(document.getElementById('mortgage').value) || 0;
+
+  const annFields = ['hoa','rentalFee','trugreen','termite','mowing','maintenance','other'];
+  let annualTotal = 0;
+  annFields.forEach(k => {
+    annualTotal += parseFloat(document.getElementById(`ann_${k}`).value) || 0;
+  });
+  const annMonthly = annualTotal / 12;
+
+  let multiMonthly = 0;
+  multiYearExpenses.forEach(e => {
+    multiMonthly += (parseFloat(e.totalCost)||0) / Math.max(1, parseInt(e.years)||1) / 12;
+  });
+
+  const totalExpenses = mortgage + annMonthly + multiMonthly;
+  const net = rent - totalExpenses;
+
+  document.getElementById('summRent').textContent = fmt(rent);
+  document.getElementById('summExpenses').textContent = fmt(totalExpenses);
+  document.getElementById('summNet').textContent = fmtS(net);
+  document.getElementById('summNet').className = 'rscard-val ' + (net >= 0 ? 'positive' : 'negative');
+  document.getElementById('summAnnual').textContent = fmtS(net * 12);
+  document.getElementById('summAnnual').className = 'rscard-val ' + (net >= 0 ? 'positive' : 'negative');
+  document.getElementById('netCard').className = 'rscard ' + (net >= 0 ? 'positive-card' : 'negative-card');
+  document.getElementById('summNetSub').textContent = net >= 0 ? 'Cash flow positive ✓' : 'Cash flow negative ⚠';
+
+  // Breakdown table
+  const items = [
+    { label: 'Mortgage + Escrow', val: mortgage, type: 'monthly' },
+    { label: 'HOA', val: (parseFloat(document.getElementById('ann_hoa').value)||0)/12, type: 'annual' },
+    { label: 'Rental Fee', val: (parseFloat(document.getElementById('ann_rentalFee').value)||0)/12, type: 'annual' },
+    { label: 'Trugreen', val: (parseFloat(document.getElementById('ann_trugreen').value)||0)/12, type: 'annual' },
+    { label: 'Termite', val: (parseFloat(document.getElementById('ann_termite').value)||0)/12, type: 'annual' },
+    { label: 'Mowing', val: (parseFloat(document.getElementById('ann_mowing').value)||0)/12, type: 'annual' },
+    { label: 'Maintenance', val: (parseFloat(document.getElementById('ann_maintenance').value)||0)/12, type: 'annual' },
+    { label: 'Other Annual', val: (parseFloat(document.getElementById('ann_other').value)||0)/12, type: 'annual' },
+    ...multiYearExpenses.map(e => ({
+      label: e.name, type: 'multi',
+      val: (parseFloat(e.totalCost)||0) / Math.max(1, parseInt(e.years)||1) / 12
+    }))
+  ].filter(i => i.val > 0);
+
+  // Table
+  const COLORS = ['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#10b981','#14b8a6','#6366f1','#8b5cf6','#ec4899'];
+  document.getElementById('expenseTable').innerHTML = `
+    <table class="breakdown-table">
+      <thead><tr><th>Expense</th><th>Monthly</th><th>Annual</th><th>Type</th></tr></thead>
+      <tbody>
+        ${items.map((it, i) => `<tr>
+          <td><span class="dot" style="background:${COLORS[i%COLORS.length]}"></span>${it.label}</td>
+          <td class="mono negative">-${fmt(it.val)}</td>
+          <td class="mono negative">-${fmt(it.val*12)}</td>
+          <td class="tag">${it.type}</td>
+        </tr>`).join('')}
+        <tr class="total-row">
+          <td><strong>Total Expenses</strong></td>
+          <td class="mono negative"><strong>-${fmt(totalExpenses)}</strong></td>
+          <td class="mono negative"><strong>-${fmt(totalExpenses*12)}</strong></td>
+          <td></td>
+        </tr>
+        <tr class="net-row">
+          <td><strong>Net Cash Flow</strong></td>
+          <td class="mono ${net>=0?'positive':'negative'}"><strong>${fmtS(net)}</strong></td>
+          <td class="mono ${net>=0?'positive':'negative'}"><strong>${fmtS(net*12)}</strong></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  // Donut chart
+  const existing = Chart.getChart('expenseDonut');
+  if (existing) existing.destroy();
+  if (items.length > 0) {
+    new Chart(document.getElementById('expenseDonut').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: items.map(i => i.label),
+        datasets: [{ data: items.map(i => i.val.toFixed(2)), backgroundColor: COLORS, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: -${fmt(ctx.raw)}` } }
+        }
+      }
+    });
+  }
+}
+
+// ── Multi-year expenses ────────────────────────────────────
+function renderMultiYear() {
+  const el = document.getElementById('multiYearList');
+  if (multiYearExpenses.length === 0) {
+    el.innerHTML = '<p class="empty-msg" style="padding:8px 0">No multi-year expenses yet.</p>';
+    return;
+  }
+  el.innerHTML = multiYearExpenses.map((e, i) => `
+    <div class="multiyear-row">
+      <div class="multiyear-info">
+        <span class="multiyear-name">${e.name}</span>
+        <span class="multiyear-meta">$${parseFloat(e.totalCost).toLocaleString()} over ${e.years} yr → ${fmt((e.totalCost/e.years)/12)}/mo</span>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeMulti(${i})">✕</button>
+    </div>`).join('');
+}
+
+window.removeMulti = function(idx) {
+  multiYearExpenses.splice(idx, 1);
+  renderMultiYear(); recalc();
+};
+
+document.getElementById('btnAddMulti').addEventListener('click', () => {
+  const name = prompt('Expense name (e.g. Home Warranty):');
+  if (!name) return;
+  const cost = parseFloat(prompt('Total cost ($):'));
+  if (isNaN(cost) || cost <= 0) return;
+  const years = parseInt(prompt('Spread over how many years?'));
+  if (isNaN(years) || years <= 0) return;
+  multiYearExpenses.push({ name, totalCost: cost, years });
+  renderMultiYear(); recalc();
+};
+
+// ── Save ───────────────────────────────────────────────────
+document.getElementById('btnSave').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSave');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  try {
+    const body = {
+      name: document.getElementById('propName').value || 'Rental Property 1',
+      address: document.getElementById('propAddress').value,
+      monthlyRent: parseFloat(document.getElementById('monthlyRent').value) || 0,
+      mortgage: parseFloat(document.getElementById('mortgage').value) || 0,
+      annualExpenses: {
+        hoa: parseFloat(document.getElementById('ann_hoa').value) || 0,
+        rentalFee: parseFloat(document.getElementById('ann_rentalFee').value) || 0,
+        trugreen: parseFloat(document.getElementById('ann_trugreen').value) || 0,
+        termite: parseFloat(document.getElementById('ann_termite').value) || 0,
+        mowing: parseFloat(document.getElementById('ann_mowing').value) || 0,
+        maintenance: parseFloat(document.getElementById('ann_maintenance').value) || 0,
+        other: parseFloat(document.getElementById('ann_other').value) || 0
+      },
+      multiYearExpenses,
+      notes: document.getElementById('propNotes').value
+    };
+    await fetch(`/api/rental/${PROP_ID}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const toast = document.getElementById('saveMsg');
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+  } catch(e) { alert('Save failed: ' + e.message); }
+  btn.textContent = 'Save Changes'; btn.disabled = false;
+});
+
+// Live recalc on any input change
+document.querySelectorAll('input[type=number]').forEach(el => el.addEventListener('input', recalc));
+
+load();
+</script>
+
+<%- include('partials/footer') %>

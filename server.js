@@ -80,6 +80,7 @@ app.use(session({
 // Routes
 app.use('/', require('./routes/auth'));
 app.use('/api', require('./routes/api'));
+app.use('/api', require('./routes/rental'));
 app.use('/', require('./routes/pages'));
 
 app.listen(PORT, () => console.log(`FinTracker running on port ${PORT}`));
