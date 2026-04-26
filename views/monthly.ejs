@@ -1,11 +1,38 @@
 <%- include('partials/header', { title: 'Monthly Entry', page: 'monthly' }) %>
 
+<style>
+/* ── Waterfall chart ─────────────────────────────── */
+.waterfall-wrap { display: flex; flex-direction: column; gap: 0; }
+.wf-row { display: grid; grid-template-columns: 160px 1fr 90px; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.wf-row:last-child { border-bottom: none; }
+.wf-label { font-size: 12px; color: var(--text-dim); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-label.wf-total { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--text); font-size: 13px; }
+.wf-bar-wrap { position: relative; height: 20px; }
+.wf-bar { position: absolute; top: 3px; height: 14px; border-radius: 3px; transition: width 0.4s ease; }
+.wf-amount { font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; }
+.wf-section-header { grid-column: 1/-1; padding: 10px 0 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+.wf-divider { grid-column: 1/-1; border-top: 2px solid var(--border); margin: 4px 0; }
+.source-tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 600; }
+.tag-ash  { background: rgba(5,150,105,0.12); color: var(--accent); }
+.tag-kp   { background: rgba(236,72,153,0.12); color: #ec4899; }
+.tag-both { background: rgba(99,102,241,0.12); color: var(--accent2); }
+.tag-inv  { background: rgba(245,158,11,0.12); color: var(--warning); }
+
+/* ── Split view ──────────────────────────────────── */
+.monthly-layout { display: grid; grid-template-columns: 1fr 420px; gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .monthly-layout { grid-template-columns: 1fr; } }
+</style>
+
 <div class="page-header">
   <div>
     <h1 class="page-title">Monthly Entry</h1>
-    <p class="page-sub">Record income, expenses and investments for a month</p>
+    <p class="page-sub">Record income, expenses and investments</p>
   </div>
-  <button class="btn btn-ghost" id="btnFillEstimates" title="Fill all fields with Cumming GA estimates">📋 Fill Estimates</button>
+  <div class="header-actions">
+    <button class="btn btn-ghost" id="btnFillEstimates">📋 Fill Estimates</button>
+    <button class="btn btn-primary" id="btnSave">Save Entry</button>
+    <button class="btn btn-danger" id="btnDelete" style="display:none">Delete</button>
+  </div>
 </div>
 
 <div class="month-selector-row">
@@ -16,107 +43,109 @@
   </div>
   <div class="month-actions">
     <span class="entry-status" id="entryStatus"></span>
-    <button class="btn btn-primary" id="btnSave">Save Entry</button>
-    <button class="btn btn-danger" id="btnDelete" style="display:none">Delete</button>
   </div>
 </div>
 
-<div class="entry-grid">
+<div class="monthly-layout">
 
-  <!-- INCOME -->
-  <div class="entry-section">
-    <div class="section-header income-header">
-      <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-      Income
-      <span class="section-total" id="totalIncome">$0</span>
-    </div>
-    <div class="fields-grid">
-      <div class="field-row"><label>Ash Salary</label><div class="input-wrap"><span>$</span><input type="number" id="income_salary" placeholder="16917"></div></div>
-      <div class="field-row"><label>KP Salary</label><div class="input-wrap"><span>$</span><input type="number" id="income_other" placeholder="4583"></div></div>
-      <div class="field-row"><label>Bonus</label><div class="input-wrap"><span>$</span><input type="number" id="income_bonus" placeholder="0"></div></div>
-      <div class="field-row"><label>Rental Income</label><div class="input-wrap"><span>$</span><input type="number" id="income_rental" placeholder="2350"></div></div>
-      <div class="field-row"><label>Investment Returns</label><div class="input-wrap"><span>$</span><input type="number" id="income_investments" placeholder="0"></div></div>
-    </div>
-  </div>
+  <!-- LEFT: Entry form -->
+  <div style="display:flex;flex-direction:column;gap:18px">
 
-  <!-- EXPENSES -->
-  <div class="entry-section">
-    <div class="section-header expense-header">
-      <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-      Expenses
-      <span class="section-total" id="totalExpenses">$0</span>
+    <!-- INCOME -->
+    <div class="entry-section">
+      <div class="section-header income-header">
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        Income
+        <span class="section-total" id="totalIncome">$0</span>
+      </div>
+      <div class="fields-grid">
+        <div class="field-row"><label>Ash Salary</label><div class="input-wrap"><span>$</span><input type="number" id="income_salary" placeholder="16917"></div></div>
+        <div class="field-row"><label>KP Salary</label><div class="input-wrap"><span>$</span><input type="number" id="income_other" placeholder="4583"></div></div>
+        <div class="field-row"><label>Bonus</label><div class="input-wrap"><span>$</span><input type="number" id="income_bonus" placeholder="0"></div></div>
+        <div class="field-row"><label>Rental Income</label><div class="input-wrap"><span>$</span><input type="number" id="income_rental" placeholder="2350"></div></div>
+        <div class="field-row"><label>Investment Returns</label><div class="input-wrap"><span>$</span><input type="number" id="income_investments" placeholder="0"></div></div>
+      </div>
     </div>
-    <div class="fields-grid">
-      <!-- TAX row — auto-calculated, overrideable -->
-      <div class="field-row tax-field-row" style="grid-column:1/-1">
-        <div class="tax-auto-row">
-          <div>
-            <label>Taxes <span class="tax-auto-badge" id="taxBadge">Auto-calculated</span></label>
-            <div class="input-wrap"><span>$</span><input type="number" id="expenses_taxes" placeholder="5340"></div>
+
+    <!-- EXPENSES -->
+    <div class="entry-section">
+      <div class="section-header expense-header">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        Expenses
+        <span class="section-total" id="totalExpenses">$0</span>
+      </div>
+      <div class="fields-grid">
+        <!-- Tax row -->
+        <div class="field-row" style="grid-column:1/-1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <label style="flex-shrink:0">Taxes <span class="tax-auto-badge" id="taxBadge">Auto</span></label>
+            <div style="display:flex;gap:8px;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;flex-wrap:wrap">
+              <span id="taxBreakFed">Fed —</span>
+              <span id="taxBreakState">GA —</span>
+              <span id="taxBreakFica">FICA —</span>
+              <button class="btn-recalc" id="btnRecalcTax">↺ Reset</button>
+            </div>
           </div>
-          <div class="tax-auto-breakdown" id="taxBreakdown">
-            <span id="taxBreakFed">Fed —</span>
-            <span id="taxBreakState">GA —</span>
-            <span id="taxBreakFica">FICA —</span>
-            <button class="btn-recalc" id="btnRecalcTax" title="Reset to calculated value">↺ Reset</button>
-          </div>
+          <div class="input-wrap" style="max-width:200px"><span>$</span><input type="number" id="expenses_taxes" placeholder="5340"></div>
         </div>
+        <div class="field-row"><label>Housing / Mortgage</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_housing" placeholder="3150"></div></div>
+        <div class="field-row"><label>Utilities</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_utilities" placeholder="575"></div></div>
+        <div class="field-row"><label>Groceries</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_groceries" placeholder="1200"></div></div>
+        <div class="field-row"><label>Dining Out</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_dining" placeholder="400"></div></div>
+        <div class="field-row"><label>Transport / Gas</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_transport" placeholder="350"></div></div>
+        <div class="field-row"><label>Insurance</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_insurance" placeholder="650"></div></div>
+        <div class="field-row"><label>Healthcare</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_healthcare" placeholder="850"></div></div>
+        <div class="field-row"><label>Kids Activities</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_childcare" placeholder="600"></div></div>
+        <div class="field-row"><label>Subscriptions + Phone</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_subscriptions" placeholder="335"></div></div>
+        <div class="field-row"><label>Clothing <span class="yearly-hint">$2,400/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_clothing" placeholder="200"></div></div>
+        <div class="field-row"><label>Entertainment</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_entertainment" placeholder="200"></div></div>
+        <div class="field-row"><label>Travel <span class="yearly-hint">$10,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_travel" placeholder="833"></div></div>
+        <div class="field-row"><label>Gifts <span class="yearly-hint">$3,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_education" placeholder="250"></div></div>
+        <div class="field-row"><label>Other</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_other" placeholder="250"></div></div>
       </div>
-      <div class="field-row"><label>Housing / Mortgage</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_housing" placeholder="3150"></div></div>
-      <div class="field-row"><label>Utilities</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_utilities" placeholder="575"></div></div>
-      <div class="field-row"><label>Groceries</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_groceries" placeholder="1200"></div></div>
-      <div class="field-row"><label>Dining Out</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_dining" placeholder="400"></div></div>
-      <div class="field-row"><label>Transport / Gas</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_transport" placeholder="350"></div></div>
-      <div class="field-row"><label>Insurance (home+auto+life)</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_insurance" placeholder="650"></div></div>
-      <div class="field-row"><label>Healthcare</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_healthcare" placeholder="850"></div></div>
-      <div class="field-row"><label>Kids (activities/school)</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_childcare" placeholder="600"></div></div>
-      <div class="field-row"><label>Subscriptions + Phone</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_subscriptions" placeholder="335"></div></div>
-      <div class="field-row"><label>Clothing <span class="yearly-hint">$2,400/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_clothing" placeholder="200"></div></div>
-      <div class="field-row"><label>Entertainment</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_entertainment" placeholder="200"></div></div>
-      <div class="field-row"><label>Travel / Vacation <span class="yearly-hint">$10,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_travel" placeholder="833"></div></div>
-      <div class="field-row"><label>Gifts <span class="yearly-hint">$3,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_education" placeholder="250"></div></div>
-      <div class="field-row"><label>Other / Misc</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_other" placeholder="250"></div></div>
     </div>
+
+    <!-- INVESTMENTS -->
+    <div class="entry-section">
+      <div class="section-header invest-header">
+        <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+        Investments
+        <span class="section-total" id="totalInvested">$0</span>
+      </div>
+      <div class="fields-grid">
+        <div class="field-row"><label>401k — Ash + KP</label><div class="input-wrap"><span>$</span><input type="number" id="investments_retirement401k" placeholder="2013"></div></div>
+        <div class="field-row"><label>ROTH IRA — Ash</label><div class="input-wrap"><span>$</span><input type="number" id="investments_ira" placeholder="846"></div></div>
+        <div class="field-row"><label>Brokerage</label><div class="input-wrap"><span>$</span><input type="number" id="investments_brokerage" placeholder="0"></div></div>
+        <div class="field-row"><label>Savings Transfer</label><div class="input-wrap"><span>$</span><input type="number" id="investments_savings" placeholder="0"></div></div>
+        <div class="field-row"><label>HSA</label><div class="input-wrap"><span>$</span><input type="number" id="investments_hsa" placeholder="150"></div></div>
+        <div class="field-row"><label>Other</label><div class="input-wrap"><span>$</span><input type="number" id="investments_other" placeholder="0"></div></div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="entry-section">
+      <div class="notes-row" style="padding:16px">
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Any notes for this month..."></textarea>
+      </div>
+    </div>
+
   </div>
 
-  <!-- INVESTMENTS -->
-  <div class="entry-section investments-section">
-    <div class="section-header invest-header">
-      <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-      Investments / Savings
-      <span class="section-total" id="totalInvested">$0</span>
-    </div>
-    <div class="fields-grid">
-      <div class="field-row"><label>401k — Ash (10%) + KP (7%)</label><div class="input-wrap"><span>$</span><input type="number" id="investments_retirement401k" placeholder="2013"></div></div>
-      <div class="field-row"><label>ROTH IRA — Ash (5% post-tax)</label><div class="input-wrap"><span>$</span><input type="number" id="investments_ira" placeholder="846"></div></div>
-      <div class="field-row"><label>Brokerage</label><div class="input-wrap"><span>$</span><input type="number" id="investments_brokerage" placeholder="0"></div></div>
-      <div class="field-row"><label>Savings Transfer</label><div class="input-wrap"><span>$</span><input type="number" id="investments_savings" placeholder="0"></div></div>
-      <div class="field-row"><label>HSA</label><div class="input-wrap"><span>$</span><input type="number" id="investments_hsa" placeholder="150"></div></div>
-      <div class="field-row"><label>Other</label><div class="input-wrap"><span>$</span><input type="number" id="investments_other" placeholder="0"></div></div>
-    </div>
-  </div>
+  <!-- RIGHT: Cash flow waterfall -->
+  <div style="position:sticky;top:20px;display:flex;flex-direction:column;gap:16px">
 
-  <!-- NET SUMMARY -->
-  <div class="entry-section net-section">
-    <div class="net-display">
-      <div class="net-row"><span>Gross Income</span><span class="positive" id="netIncome">$0</span></div>
-      <div class="net-row"><span>Taxes</span><span class="negative" id="netTaxes">$0</span></div>
-      <div class="net-row"><span>Take-Home (after tax)</span><span id="netTakeHome">$0</span></div>
-      <div class="net-row" style="padding-top:8px;border-top:1px solid var(--border);margin-top:4px">
-        <span>All Other Expenses</span><span class="negative" id="netOtherExpenses">$0</span>
-      </div>
-      <div class="net-row net-divider">
-        <span>Net Cash Surplus</span><span id="netSavings">$0</span>
-      </div>
-      <div class="net-row"><span>Invested This Month</span><span class="positive" id="netInvested">$0</span></div>
-      <div class="net-row" style="font-size:12px;color:var(--text-muted)">
-        <span>Liquid Cash Kept</span><span id="netLiquid">$0</span>
-      </div>
+    <div class="chart-card">
+      <h3 class="chart-title">Cash Flow Waterfall</h3>
+      <p class="chart-note">How income flows through expenses to savings</p>
+      <div class="waterfall-wrap" id="waterfall"></div>
     </div>
-    <div class="notes-row">
-      <label>Notes</label>
-      <textarea id="notes" placeholder="Any notes for this month..."></textarea>
+
+    <div class="chart-card">
+      <h3 class="chart-title">Income Sources</h3>
+      <canvas id="incomeDonut" height="160"></canvas>
     </div>
+
   </div>
 
 </div>
@@ -126,155 +155,276 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const now = new Date();
 let currentYear = now.getFullYear();
 let currentMonth = now.getMonth() + 1;
-let calculatedTax = 5340; // default, updated from API
+let calculatedTax = 5340;
 let taxManuallyChanged = false;
+let incomeChart = null;
 
-// ── Estimates: Cumming GA, 5000sqft, family of 4 ──────────
 const ESTIMATES = {
   income: { salary: 16917, other: 4583, bonus: 0, rental: 2350, investments: 0 },
-  expenses: {
-    taxes: null,        // filled from API ($5,340/mo auto-calculated)
-    housing: 3150,
-    utilities: 575,     // elec $280 + gas $95 + water $85 + internet $80 + trash $35
-    groceries: 1200,
-    dining: 400,
-    transport: 350,     // gas $250 + maintenance $100
-    insurance: 650,     // home $220 + auto $280 + life $150
-    healthcare: 850,    // health ins $650 + HSA $150 + dental $50
-    childcare: 600,     // kids activities/school
-    subscriptions: 335, // streaming $60 + gym $80 + prime $15 + phone $180
-    clothing: 200,      // $2,400/yr ÷ 12 (adults + kids)
-    entertainment: 200,
-    travel: 833,        // $10,000/yr ÷ 12 (amortized)
-    education: 250,     // gifts $3,000/yr ÷ 12 (using education field)
-    other: 250          // misc
-  },
-  investments: {
-    retirement401k: 2013,  // Ash $1,692 + KP $321
-    ira: 846,              // Ash ROTH 5%
-    brokerage: 0,
-    savings: 0,
-    hsa: 150,
-    other: 0
-  }
+  expenses: { taxes: null, housing: 3150, utilities: 575, groceries: 1200, dining: 400,
+    transport: 350, insurance: 650, healthcare: 850, childcare: 600, subscriptions: 335,
+    clothing: 200, entertainment: 200, travel: 833, education: 250, other: 250 },
+  investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 150, other: 0 }
 };
 
-const fmt = n => '$' + Math.abs(Math.round(n || 0)).toLocaleString();
-const fmtSigned = n => (n >= 0 ? '+' : '-') + '$' + Math.abs(Math.round(n || 0)).toLocaleString();
+const fmt  = n => '$' + Math.abs(Math.round(n||0)).toLocaleString();
+const fmtS = n => (n>=0?'+':'-') + '$' + Math.abs(Math.round(n||0)).toLocaleString();
+const getV = id => parseFloat(document.getElementById(id)?.value) || 0;
 
 function updateDisplay() {
   document.getElementById('monthDisplay').textContent = `${MONTHS[currentMonth-1]} ${currentYear}`;
   loadEntry();
 }
 
-function getVal(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+// ── Waterfall ────────────────────────────────────────────
+function buildWaterfall() {
+  const ashSalary  = getV('income_salary');
+  const kpSalary   = getV('income_other');
+  const bonus      = getV('income_bonus');
+  const rental     = getV('income_rental');
+  const invIncome  = getV('income_investments');
+  const totalIncome = ashSalary + kpSalary + bonus + rental + invIncome;
 
-function sumFields(prefix) {
-  let total = 0;
-  document.querySelectorAll(`[id^="${prefix}_"]`).forEach(el => total += parseFloat(el.value || 0));
-  return total;
+  const taxes      = getV('expenses_taxes');
+  const housing    = getV('expenses_housing');
+  const utilities  = getV('expenses_utilities');
+  const groceries  = getV('expenses_groceries');
+  const dining     = getV('expenses_dining');
+  const transport  = getV('expenses_transport');
+  const insurance  = getV('expenses_insurance');
+  const healthcare = getV('expenses_healthcare');
+  const kids       = getV('expenses_childcare');
+  const subs       = getV('expenses_subscriptions');
+  const clothing   = getV('expenses_clothing');
+  const entertain  = getV('expenses_entertainment');
+  const travel     = getV('expenses_travel');
+  const gifts      = getV('expenses_education');
+  const other      = getV('expenses_other');
+
+  const inv401k    = getV('investments_retirement401k');
+  const invIra     = getV('investments_ira');
+  const invBrok    = getV('investments_brokerage');
+  const invSav     = getV('investments_savings');
+  const invHsa     = getV('investments_hsa');
+  const invOther   = getV('investments_other');
+  const totalInv   = inv401k + invIra + invBrok + invSav + invHsa + invOther;
+
+  const totalExp   = taxes + housing + utilities + groceries + dining + transport +
+                     insurance + healthcare + kids + subs + clothing + entertain + travel + gifts + other;
+  const net        = totalIncome - totalExp - totalInv;
+
+  // Update header totals
+  document.getElementById('totalIncome').textContent   = fmt(totalIncome);
+  document.getElementById('totalExpenses').textContent = fmt(totalExp);
+  document.getElementById('totalInvested').textContent = fmt(totalInv);
+
+  // Buckets: { label, amount, color, source, type }
+  // source: ash | kp | both | rental | investment
+  const buckets = [
+    // Income sources
+    { label: 'Ash Salary',    amount: ashSalary,  color: '#059669', source: 'ash',  type: 'income' },
+    { label: 'KP Salary',     amount: kpSalary,   color: '#ec4899', source: 'kp',   type: 'income' },
+    { label: 'Bonus',         amount: bonus,       color: '#10b981', source: 'ash',  type: 'income' },
+    { label: 'Rental',        amount: rental,      color: '#6366f1', source: 'both', type: 'income' },
+    { label: 'Invest Returns',amount: invIncome,   color: '#8b5cf6', source: 'both', type: 'income' },
+    // Expenses - Ash primary, KP secondary
+    // Fixed/essential (Ash)
+    { label: 'Taxes',         amount: taxes,       color: '#dc2626', source: 'ash',  type: 'expense', bucket: 'Fixed' },
+    { label: 'Mortgage',      amount: housing,     color: '#ef4444', source: 'ash',  type: 'expense', bucket: 'Fixed' },
+    { label: 'Insurance',     amount: insurance,   color: '#f87171', source: 'ash',  type: 'expense', bucket: 'Fixed' },
+    { label: 'Healthcare',    amount: healthcare,  color: '#fb923c', source: 'ash',  type: 'expense', bucket: 'Fixed' },
+    // Household (Both)
+    { label: 'Utilities',     amount: utilities,   color: '#f97316', source: 'both', type: 'expense', bucket: 'Household' },
+    { label: 'Groceries',     amount: groceries,   color: '#f59e0b', source: 'both', type: 'expense', bucket: 'Household' },
+    { label: 'Transport',     amount: transport,   color: '#eab308', source: 'both', type: 'expense', bucket: 'Household' },
+    { label: 'Subscriptions', amount: subs,        color: '#84cc16', source: 'both', type: 'expense', bucket: 'Household' },
+    // Lifestyle (KP primary)
+    { label: 'Dining',        amount: dining,      color: '#06b6d4', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
+    { label: 'Kids',          amount: kids,        color: '#0ea5e9', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
+    { label: 'Clothing',      amount: clothing,    color: '#6366f1', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
+    { label: 'Entertainment', amount: entertain,   color: '#8b5cf6', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
+    // Discretionary (Both)
+    { label: 'Travel',        amount: travel,      color: '#a855f7', source: 'both', type: 'expense', bucket: 'Discretionary' },
+    { label: 'Gifts',         amount: gifts,       color: '#ec4899', source: 'both', type: 'expense', bucket: 'Discretionary' },
+    { label: 'Other',         amount: other,       color: '#94a3b8', source: 'both', type: 'expense', bucket: 'Discretionary' },
+    // Investments (Ash)
+    { label: '401k (Ash+KP)', amount: inv401k,     color: '#059669', source: 'ash',  type: 'invest', bucket: 'Investments' },
+    { label: 'ROTH IRA',      amount: invIra,      color: '#10b981', source: 'ash',  type: 'invest', bucket: 'Investments' },
+    { label: 'Brokerage',     amount: invBrok,     color: '#34d399', source: 'ash',  type: 'invest', bucket: 'Investments' },
+    { label: 'Savings',       amount: invSav,      color: '#6ee7b7', source: 'ash',  type: 'invest', bucket: 'Investments' },
+    { label: 'HSA',           amount: invHsa,      color: '#a7f3d0', source: 'both', type: 'invest', bucket: 'Investments' },
+  ].filter(b => b.amount > 0);
+
+  // Render waterfall
+  const wf = document.getElementById('waterfall');
+  let running = totalIncome;
+  const maxVal = totalIncome;
+
+  const sourceTag = s => {
+    const map = { ash:'Ash', kp:'KP', both:'Joint', rental:'Rental', investment:'Returns' };
+    const cls  = { ash:'tag-ash', kp:'tag-kp', both:'tag-both', rental:'tag-inv', investment:'tag-inv' };
+    return `<span class="source-tag ${cls[s]||'tag-both'}">${map[s]||s}</span>`;
+  };
+
+  let html = '';
+
+  // Income section
+  html += `<div class="wf-row"><div class="wf-section-header">INCOME</div></div>`;
+  const incBuckets = buckets.filter(b => b.type === 'income');
+  incBuckets.forEach(b => {
+    const pct = (b.amount / maxVal * 100).toFixed(1);
+    html += `<div class="wf-row">
+      <div class="wf-label">${b.label} ${sourceTag(b.source)}</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.85"></div></div>
+      <div class="wf-amount positive">${fmt(b.amount)}</div>
+    </div>`;
+  });
+
+  // Total income
+  html += `<div class="wf-row">
+    <div class="wf-label wf-total">Total Income</div>
+    <div class="wf-bar-wrap"><div class="wf-bar" style="width:100%;background:var(--accent);opacity:0.3"></div></div>
+    <div class="wf-amount positive" style="font-weight:700">${fmt(totalIncome)}</div>
+  </div>`;
+
+  // Expense buckets
+  const expBucketNames = ['Fixed','Household','Lifestyle','Discretionary'];
+  const srcMap = { Fixed: 'ash', Household: 'both', Lifestyle: 'kp', Discretionary: 'both' };
+  const bucketColors = { Fixed:'#dc2626', Household:'#f97316', Lifestyle:'#0ea5e9', Discretionary:'#a855f7' };
+
+  expBucketNames.forEach(bname => {
+    const items = buckets.filter(b => b.bucket === bname);
+    if (!items.length) return;
+    const bTotal = items.reduce((s,b) => s+b.amount, 0);
+    running -= bTotal;
+    const pctTotal = (bTotal / maxVal * 100).toFixed(1);
+    const pctRem   = (Math.max(0,running) / maxVal * 100).toFixed(1);
+
+    html += `<div class="wf-row"><div class="wf-section-header">${bname.toUpperCase()} <span class="source-tag ${srcMap[bname]==='ash'?'tag-ash':srcMap[bname]==='kp'?'tag-kp':'tag-both'}">${srcMap[bname]==='ash'?'Ash':srcMap[bname]==='kp'?'KP':'Joint'}</span></div></div>`;
+
+    items.forEach(b => {
+      const pct = (b.amount / maxVal * 100).toFixed(1);
+      html += `<div class="wf-row">
+        <div class="wf-label">${b.label}</div>
+        <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.75"></div></div>
+        <div class="wf-amount negative">-${fmt(b.amount)}</div>
+      </div>`;
+    });
+
+    html += `<div class="wf-row">
+      <div class="wf-label wf-total">After ${bname}</div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar" style="width:${pctRem}%;background:${running>=0?'var(--accent)':'var(--danger)'};opacity:0.4"></div>
+      </div>
+      <div class="wf-amount ${running>=0?'positive':'negative'}" style="font-weight:700">${fmt(running)}</div>
+    </div>`;
+  });
+
+  // Investments
+  const invItems = buckets.filter(b => b.type === 'invest');
+  if (invItems.length) {
+    const invTotal = invItems.reduce((s,b) => s+b.amount, 0);
+    running -= invTotal;
+    html += `<div class="wf-row"><div class="wf-section-header">INVESTMENTS <span class="source-tag tag-ash">Ash primary</span></div></div>`;
+    invItems.forEach(b => {
+      const pct = (b.amount / maxVal * 100).toFixed(1);
+      html += `<div class="wf-row">
+        <div class="wf-label">${b.label}</div>
+        <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.75"></div></div>
+        <div class="wf-amount" style="color:var(--warning)">-${fmt(b.amount)}</div>
+      </div>`;
+    });
+  }
+
+  // Net
+  html += `<div class="wf-row"><div class="wf-divider"></div></div>`;
+  const netPct = (Math.abs(net) / maxVal * 100).toFixed(1);
+  html += `<div class="wf-row">
+    <div class="wf-label wf-total">Net Liquid Cash</div>
+    <div class="wf-bar-wrap"><div class="wf-bar" style="width:${netPct}%;background:${net>=0?'var(--accent)':'var(--danger)'}"></div></div>
+    <div class="wf-amount ${net>=0?'positive':'negative'}" style="font-size:14px;font-weight:700">${fmtS(net)}</div>
+  </div>`;
+
+  wf.innerHTML = html;
+
+  // Income donut
+  if (incomeChart) incomeChart.destroy();
+  const incData = incBuckets.filter(b => b.amount > 0);
+  if (incData.length > 0) {
+    incomeChart = new Chart(document.getElementById('incomeDonut').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: incData.map(b => b.label),
+        datasets: [{ data: incData.map(b => b.amount), backgroundColor: incData.map(b => b.color), borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: 'var(--text-dim)', font: { size: 11 }, padding: 8 } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+        }
+      }
+    });
+  }
 }
 
-function updateTotals() {
-  const income = sumFields('income');
-  const taxes = getVal('expenses_taxes');
-  const otherExpenses = sumFields('expenses') - taxes;
-  const totalExpenses = taxes + otherExpenses;
-  const invested = sumFields('investments');
-  const net = income - totalExpenses;
-  const liquid = net - invested;
-
-  document.getElementById('totalIncome').textContent = fmt(income);
-  document.getElementById('totalExpenses').textContent = fmt(totalExpenses);
-  document.getElementById('totalInvested').textContent = fmt(invested);
-  document.getElementById('netIncome').textContent = fmt(income);
-  document.getElementById('netTaxes').textContent = fmt(taxes);
-  const takeHome = income - taxes;
-  document.getElementById('netTakeHome').textContent = fmt(takeHome);
-  document.getElementById('netOtherExpenses').textContent = fmt(otherExpenses);
-  const netEl = document.getElementById('netSavings');
-  netEl.textContent = fmtSigned(net);
-  netEl.className = net >= 0 ? 'positive' : 'negative';
-  document.getElementById('netInvested').textContent = fmt(invested);
-  const liqEl = document.getElementById('netLiquid');
-  liqEl.textContent = fmtSigned(liquid);
-  liqEl.className = liquid >= 0 ? 'positive' : 'negative';
-}
-
-// ── Load tax from API ──────────────────────────────────────
+// ── Tax auto-load ────────────────────────────────────────
 async function loadTax() {
   try {
     const tax = await fetch('/api/tax').then(r => r.json());
-    if (tax && tax.monthly) {
+    if (tax?.monthly) {
       calculatedTax = tax.monthly.total;
       document.getElementById('taxBreakFed').textContent   = `Fed $${tax.monthly.federal.toLocaleString()}`;
       document.getElementById('taxBreakState').textContent = `GA $${tax.monthly.state.toLocaleString()}`;
       document.getElementById('taxBreakFica').textContent  = `FICA $${tax.monthly.fica.toLocaleString()}`;
       ESTIMATES.expenses.taxes = calculatedTax;
-      // Only set if field is empty or not manually changed
-      const taxField = document.getElementById('expenses_taxes');
-      if (!taxField.value || !taxManuallyChanged) {
-        taxField.value = calculatedTax;
-        taxManuallyChanged = false;
-      }
-      updateTotals();
+      const tf = document.getElementById('expenses_taxes');
+      if (!tf.value || !taxManuallyChanged) { tf.value = calculatedTax; taxManuallyChanged = false; }
+      buildWaterfall();
     }
   } catch(e) { console.error('Tax load error:', e); }
 }
 
-// Reset tax to calculated
 document.getElementById('btnRecalcTax').addEventListener('click', () => {
   document.getElementById('expenses_taxes').value = calculatedTax;
-  document.getElementById('taxBadge').textContent = 'Auto-calculated';
+  document.getElementById('taxBadge').textContent = 'Auto';
   document.getElementById('taxBadge').className = 'tax-auto-badge';
   taxManuallyChanged = false;
-  updateTotals();
+  buildWaterfall();
 });
 
-// Mark tax as manually changed
 document.getElementById('expenses_taxes').addEventListener('input', () => {
   const v = parseFloat(document.getElementById('expenses_taxes').value) || 0;
-  if (v !== calculatedTax) {
-    taxManuallyChanged = true;
-    document.getElementById('taxBadge').textContent = 'Manually set';
-    document.getElementById('taxBadge').className = 'tax-auto-badge manual';
-  } else {
-    taxManuallyChanged = false;
-    document.getElementById('taxBadge').textContent = 'Auto-calculated';
-    document.getElementById('taxBadge').className = 'tax-auto-badge';
-  }
-  updateTotals();
+  taxManuallyChanged = v !== calculatedTax;
+  document.getElementById('taxBadge').textContent = taxManuallyChanged ? 'Manual' : 'Auto';
+  document.getElementById('taxBadge').className   = 'tax-auto-badge' + (taxManuallyChanged ? ' manual' : '');
+  buildWaterfall();
 });
 
-// ── Fill estimates button ──────────────────────────────────
+// ── Fill estimates ───────────────────────────────────────
 document.getElementById('btnFillEstimates').addEventListener('click', () => {
-  if (!confirm('Fill all empty fields with Cumming GA estimates? Only empty fields will be filled.')) return;
-  const fill = (id, val) => {
-    const el = document.getElementById(id);
-    if (el && (!el.value || parseFloat(el.value) === 0)) el.value = val || '';
-  };
+  if (!confirm('Fill empty fields with Cumming GA estimates?')) return;
+  const fill = (id, val) => { const el = document.getElementById(id); if (el && (!el.value || +el.value === 0)) el.value = val || ''; };
   Object.entries(ESTIMATES.income).forEach(([k,v]) => fill(`income_${k}`, v));
   Object.entries(ESTIMATES.expenses).forEach(([k,v]) => {
     if (k === 'taxes') fill('expenses_taxes', calculatedTax);
     else fill(`expenses_${k}`, v);
   });
   Object.entries(ESTIMATES.investments).forEach(([k,v]) => fill(`investments_${k}`, v));
-  updateTotals();
+  buildWaterfall();
 });
 
-// ── Load entry from DB ─────────────────────────────────────
+// ── Load entry ───────────────────────────────────────────
 async function loadEntry() {
   const data = await fetch(`/api/entries/${currentYear}/${currentMonth}`).then(r => r.json());
   const statusEl = document.getElementById('entryStatus');
-  const deleteBtn = document.getElementById('btnDelete');
-
   document.querySelectorAll('input[type=number]').forEach(el => el.value = '');
   document.getElementById('notes').value = '';
   taxManuallyChanged = false;
 
-  if (data && data._id) {
+  if (data?._id) {
     statusEl.textContent = '✓ Saved'; statusEl.className = 'entry-status saved';
-    deleteBtn.style.display = '';
+    document.getElementById('btnDelete').style.display = '';
     ['salary','bonus','rental','investments','other'].forEach(k => {
       const el = document.getElementById(`income_${k}`);
       if (el && data.income) el.value = data.income[k] || '';
@@ -289,20 +439,18 @@ async function loadEntry() {
       if (el && data.investments) el.value = data.investments[k] || '';
     });
     document.getElementById('notes').value = data.notes || '';
-    // Check if tax was manually set
     const savedTax = data.expenses?.taxes || 0;
     if (savedTax && savedTax !== calculatedTax) {
       taxManuallyChanged = true;
-      document.getElementById('taxBadge').textContent = 'Manually set';
+      document.getElementById('taxBadge').textContent = 'Manual';
       document.getElementById('taxBadge').className = 'tax-auto-badge manual';
     }
   } else {
     statusEl.textContent = '○ Not entered'; statusEl.className = 'entry-status empty';
-    deleteBtn.style.display = 'none';
-    // Auto-fill tax on new entry
+    document.getElementById('btnDelete').style.display = 'none';
     document.getElementById('expenses_taxes').value = calculatedTax;
   }
-  updateTotals();
+  buildWaterfall();
 }
 
 document.getElementById('btnPrev').addEventListener('click', () => {
@@ -313,37 +461,22 @@ document.getElementById('btnNext').addEventListener('click', () => {
 });
 
 document.querySelectorAll('input[type=number]').forEach(el => {
-  if (el.id !== 'expenses_taxes') el.addEventListener('input', updateTotals);
+  if (el.id !== 'expenses_taxes') el.addEventListener('input', buildWaterfall);
 });
 
 document.getElementById('btnSave').addEventListener('click', async () => {
+  const getE = k => getV(`expenses_${k}`);
+  const getI = k => getV(`investments_${k}`);
   const body = {
-    income: {
-      salary: getVal('income_salary'), bonus: getVal('income_bonus'),
-      rental: getVal('income_rental'), investments: getVal('income_investments'),
-      other: getVal('income_other')
-    },
-    expenses: {
-      housing: getVal('expenses_housing'), utilities: getVal('expenses_utilities'),
-      groceries: getVal('expenses_groceries'), dining: getVal('expenses_dining'),
-      transport: getVal('expenses_transport'), insurance: getVal('expenses_insurance'),
-      healthcare: getVal('expenses_healthcare'), education: getVal('expenses_education'),
-      entertainment: getVal('expenses_entertainment'), clothing: getVal('expenses_clothing'),
-      travel: getVal('expenses_travel'), subscriptions: getVal('expenses_subscriptions'),
-      childcare: getVal('expenses_childcare'), taxes: getVal('expenses_taxes'),
-      other: getVal('expenses_other')
-    },
-    investments: {
-      retirement401k: getVal('investments_retirement401k'), ira: getVal('investments_ira'),
-      brokerage: getVal('investments_brokerage'), savings: getVal('investments_savings'),
-      hsa: getVal('investments_hsa'), other: getVal('investments_other')
-    },
+    income: { salary:getV('income_salary'), bonus:getV('income_bonus'), rental:getV('income_rental'), investments:getV('income_investments'), other:getV('income_other') },
+    expenses: { housing:getE('housing'), utilities:getE('utilities'), groceries:getE('groceries'), dining:getE('dining'), transport:getE('transport'), insurance:getE('insurance'), healthcare:getE('healthcare'), education:getE('education'), entertainment:getE('entertainment'), clothing:getE('clothing'), travel:getE('travel'), subscriptions:getE('subscriptions'), childcare:getE('childcare'), taxes:getE('taxes'), other:getE('other') },
+    investments: { retirement401k:getI('retirement401k'), ira:getI('ira'), brokerage:getI('brokerage'), savings:getI('savings'), hsa:getI('hsa'), other:getI('other') },
     notes: document.getElementById('notes').value
   };
   const btn = document.getElementById('btnSave');
   btn.textContent = 'Saving...'; btn.disabled = true;
   await fetch(`/api/entries/${currentYear}/${currentMonth}`, {
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
   });
   btn.textContent = 'Save Entry'; btn.disabled = false;
   loadEntry();
@@ -351,11 +484,10 @@ document.getElementById('btnSave').addEventListener('click', async () => {
 
 document.getElementById('btnDelete').addEventListener('click', async () => {
   if (!confirm('Delete this month\'s entry?')) return;
-  await fetch(`/api/entries/${currentYear}/${currentMonth}`, { method: 'DELETE' });
+  await fetch(`/api/entries/${currentYear}/${currentMonth}`, { method:'DELETE' });
   loadEntry();
 });
 
-// Init
 loadTax().then(() => updateDisplay());
 </script>
 

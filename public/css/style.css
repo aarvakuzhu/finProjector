@@ -207,6 +207,7 @@ body {
 .field-row { display: flex; flex-direction: column; gap: 4px; }
 .field-row label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
 .field-row input { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: 'JetBrains Mono',monospace; font-size: 13px; outline: none; width: 100%; }
+.field-row .input-wrap input { padding-left: 28px; padding-right: 10px; }
 .field-row input:focus { border-color: var(--accent); }
 .net-display { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .net-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
