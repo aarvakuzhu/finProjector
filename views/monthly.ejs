@@ -259,11 +259,16 @@ function buildWaterfall() {
     { label: 'Other Invest',  amount: invOther,color: '#d1fae5' },
   ].filter(e => e.amount > 0);
 
-  // Separate investments into salary-deductions vs discretionary
-  // 401k + ROTH come off Ash salary before expenses (payroll deductions)
-  // Brokerage/Savings/HSA/Other are post-expense discretionary
-  const ash401k_ded  = inv401k;   // combined Ash+KP 401k — deducted from Ash gross
-  const ashRoth_ded  = invIra;    // ROTH — post-tax but committed before spending
+  // ── Investment deduction split ──────────────────────────────
+  // Ash pays: his 401k ($1,692) + ROTH IRA ($846) — deducted from Ash salary
+  // KP pays:  her 401k ($321)                     — deducted from KP salary
+  // The investments field stores combined 401k (Ash+KP = $2,013)
+  // We split: KP portion = $321, Ash portion = remainder
+  const KP_401K = 321;                          // KP's 401k contribution
+  const ash401k_ded = Math.max(0, inv401k - KP_401K); // Ash's 401k only
+  const kp401k_ded  = Math.min(inv401k, KP_401K);     // KP's 401k only
+  const ashRoth_ded = invIra;                   // ROTH — Ash only, post-tax payroll
+
   const discInvItems = [
     { label: 'Brokerage',    amount: invBrok,  color: '#34d399' },
     { label: 'Savings',      amount: invSav,   color: '#6ee7b7' },
@@ -287,17 +292,17 @@ function buildWaterfall() {
   // ── STEP 2: DEDUCT 401k + ROTH FROM SALARY ──────────────
   // These are payroll deductions — never available for spending
   const dedItems = [
-    { label: '401k — Ash + KP', amount: ash401k_ded, color: '#0d9488' },
+    { label: '401k — Ash only', amount: ash401k_ded, color: '#0d9488' },
     { label: 'ROTH IRA — Ash',  amount: ashRoth_ded, color: '#14b8a6' },
   ].filter(e => e.amount > 0);
 
   if (dedItems.length) {
-    html += row('header', '✂️ Payroll Deductions (never available for expenses)', '', '', '');
+    html += row('header', '✂️ Ash Payroll Deductions', '', '', 'tag-ash');
     dedItems.forEach(e => {
       running -= e.amount;
       html += expRow(e.label, e.amount, e.color, running, maxVal, '', 'inv');
     });
-    html += subtotalRow('Ash Take-Home (after deductions)', running);
+    html += subtotalRow('Ash Take-Home', running);
   }
 
   // ── STEP 3: ALL EXPENSES charged to Ash take-home ────────
@@ -323,7 +328,11 @@ function buildWaterfall() {
   html += row('header', labelKP, '', '', 'tag-kp');
   html += incRow('KP Salary', kpSalary, '#ec4899', running, maxVal);
   running += kpSalary;
-  html += subtotalRow('After KP Salary', running);
+  if (kp401k_ded > 0) {
+    html += expRow('401k — KP', kp401k_ded, '#0d9488', running - kp401k_ded, maxVal, '', 'inv');
+    running -= kp401k_ded;
+  }
+  html += subtotalRow('KP Take-Home', running);
 
   // ── STEP 5: RENTAL adds on top ────────────────────────────
   if (rental) {
