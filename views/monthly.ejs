@@ -71,11 +71,11 @@
       <div class="field-row"><label>Healthcare</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_healthcare" placeholder="850"></div></div>
       <div class="field-row"><label>Kids (activities/school)</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_childcare" placeholder="600"></div></div>
       <div class="field-row"><label>Subscriptions + Phone</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_subscriptions" placeholder="335"></div></div>
-      <div class="field-row"><label>Clothing</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_clothing" placeholder="150"></div></div>
+      <div class="field-row"><label>Clothing <span class="yearly-hint">$2,400/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_clothing" placeholder="200"></div></div>
       <div class="field-row"><label>Entertainment</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_entertainment" placeholder="200"></div></div>
-      <div class="field-row"><label>Travel / Vacation</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_travel" placeholder="500"></div></div>
-      <div class="field-row"><label>Education</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_education" placeholder="0"></div></div>
-      <div class="field-row"><label>Other</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_other" placeholder="200"></div></div>
+      <div class="field-row"><label>Travel / Vacation <span class="yearly-hint">$10,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_travel" placeholder="833"></div></div>
+      <div class="field-row"><label>Gifts <span class="yearly-hint">$3,000/yr</span></label><div class="input-wrap"><span>$</span><input type="number" id="expenses_education" placeholder="250"></div></div>
+      <div class="field-row"><label>Other / Misc</label><div class="input-wrap"><span>$</span><input type="number" id="expenses_other" placeholder="250"></div></div>
     </div>
   </div>
 
@@ -133,7 +133,7 @@ let taxManuallyChanged = false;
 const ESTIMATES = {
   income: { salary: 16917, other: 4583, bonus: 0, rental: 2350, investments: 0 },
   expenses: {
-    taxes: null,        // filled from API
+    taxes: null,        // filled from API ($5,340/mo auto-calculated)
     housing: 3150,
     utilities: 575,     // elec $280 + gas $95 + water $85 + internet $80 + trash $35
     groceries: 1200,
@@ -143,11 +143,11 @@ const ESTIMATES = {
     healthcare: 850,    // health ins $650 + HSA $150 + dental $50
     childcare: 600,     // kids activities/school
     subscriptions: 335, // streaming $60 + gym $80 + prime $15 + phone $180
-    clothing: 150,
+    clothing: 200,      // $2,400/yr ÷ 12 (adults + kids)
     entertainment: 200,
-    travel: 500,
-    education: 0,
-    other: 200
+    travel: 833,        // $10,000/yr ÷ 12 (amortized)
+    education: 250,     // gifts $3,000/yr ÷ 12 (using education field)
+    other: 250          // misc
   },
   investments: {
     retirement401k: 2013,  // Ash $1,692 + KP $321

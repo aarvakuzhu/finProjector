@@ -50,11 +50,11 @@ mongoose.connect(process.env.MONGODB_URI)
           healthcare: 850,    // Health insurance 50 + HSA 50 + dental 0
           childcare: 600,     // Kids activities, school supplies
           subscriptions: 335, // Streaming 0 + gym 0 + Prime 5 + phone 80
-          clothing: 150,
+          clothing: 200,      // $2,400/yr ÷ 12
           entertainment: 200,
-          travel: 500,        // Amortized vacation (k/yr)
-          education: 0,
-          other: 200
+          travel: 833,        // $10,000/yr ÷ 12 (annual travel budget)
+          education: 250,     // Gifts $3,000/yr ÷ 12
+          other: 250          // Misc
         },
         investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 150, other: 0 },
         notes: 'April 2026 — first tracked month with Cumming GA estimates. Override any field as needed. Tax auto-calculated from Georgia MFJ rates.'
