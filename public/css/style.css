@@ -380,3 +380,60 @@ body {
   .page-header .btn { width: 100%; justify-content: center; }
   .rental-summary { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Tax Estimator Page ─────────────────────────────────── */
+.tax-person-block {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg3);
+}
+.tax-person-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tax-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  padding: 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+}
+.tax-entry-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.tax-entry-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.tec-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.tec-val { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; }
+.tec-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.tec-rows { display: flex; flex-direction: column; gap: 8px; }
+.tec-row { display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.tec-row.total { border-bottom: none; padding-top: 6px; font-size: 14px; }
+
+/* College goal distributed label */
+.goal-distributed-tag {
+  font-size: 10px;
+  background: rgba(79,70,229,0.1);
+  color: var(--accent2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .tax-entry-cards { grid-template-columns: 1fr; }
+}

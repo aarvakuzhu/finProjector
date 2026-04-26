@@ -161,6 +161,20 @@ router.get('/projection', requireAuth, async (req, res) => {
     const annualCash = avgMonthlyCash * 12;
     const annualInvested = avgMonthlyInvested * 12;
 
+    // Build goal expense schedule — distributed across years for multi-year goals
+    const goalExpenseByYear = {};
+    for (const g of (profile.goals || [])) {
+      const startYear = parseInt(g.targetYear) || currentYear;
+      const duration  = parseInt(g.durationYears) || 1;
+      const annualCost = g.annualAmount
+        ? parseFloat(g.annualAmount)
+        : parseFloat(g.targetAmount) / duration;
+      for (let i = 0; i < duration; i++) {
+        const yr = startYear + i;
+        goalExpenseByYear[yr] = (goalExpenseByYear[yr] || 0) + annualCost;
+      }
+    }
+
     const years = [];
     let investmentPortfolio = Math.max(0, profile.currentInvestments || 0);
     let cashStack = Math.max(0, profile.currentSavings || 0);
@@ -171,16 +185,18 @@ router.get('/projection', requireAuth, async (req, res) => {
       const thisYearInvested = annualInvested * growthFactor;
       investmentPortfolio = investmentPortfolio * (1 + returnRate) + thisYearInvested;
       const thisYearCash = annualCash * growthFactor;
-      cashStack += thisYearCash;
+      const goalDraw = goalExpenseByYear[yr] || 0;
+      cashStack += thisYearCash - goalDraw;
 
       years.push({
         year: yr,
         portfolio: Math.round(investmentPortfolio),
-        cashStack: Math.round(cashStack),
-        totalWealth: Math.round(investmentPortfolio + cashStack),
+        cashStack: Math.round(Math.max(0, cashStack)),
+        totalWealth: Math.round(investmentPortfolio + Math.max(0, cashStack)),
         annualSavings: Math.round((annualCash + annualInvested) * growthFactor),
         annualCash: Math.round(thisYearCash),
         annualInvested: Math.round(thisYearInvested),
+        goalDraw: Math.round(goalDraw),
         isRetirement: yr === retirementYear
       });
     }
@@ -272,3 +288,19 @@ router.get('/summary', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+// ── Tax Estimate ─────────────────────────────────────────────
+router.get('/tax', requireAuth, async (req, res) => {
+  try {
+    const rawProfile = await Profile.findById('main');
+    const tp = rawProfile?.taxProfile || {};
+    const { estimateTax } = require('../utils/taxEngine');
+    const result = estimateTax({
+      ashGross:   tp.ashGross   || 203000,
+      kpGross:    tp.kpGross    || 55000,
+      ash401kPct: tp.ash401kPct || 10,
+      kp401kPct:  tp.kp401kPct  || 7
+    });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});

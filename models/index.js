@@ -25,6 +25,7 @@ const monthlyEntrySchema = new mongoose.Schema({
     travel: { type: Number, default: 0 },
     subscriptions: { type: Number, default: 0 },
     childcare: { type: Number, default: 0 },
+    taxes: { type: Number, default: 0 },   // federal + state + FICA
     other: { type: Number, default: 0 }
   },
   investments: {
@@ -51,10 +52,21 @@ const profileSchema = new mongoose.Schema({
   annualReturnRate: { type: Number, default: 7 },
   inflationRate: { type: Number, default: 3 },
   salaryGrowthRate: { type: Number, default: 4 },
+  taxProfile: {
+    filingStatus: { type: String, default: 'mfj' },
+    state: { type: String, default: 'georgia' },
+    ashGross: { type: Number, default: 203000 },
+    kpGross: { type: Number, default: 55000 },
+    ash401kPct: { type: Number, default: 10 },
+    kp401kPct: { type: Number, default: 7 },
+    ashRothPct: { type: Number, default: 5 }
+  },
   goals: [{
     name: { type: String },
     targetYear: { type: Number },
     targetAmount: { type: Number },
+    annualAmount: { type: Number, default: null },
+    durationYears: { type: Number, default: 1 },
     currentSaved: { type: Number, default: 0 },
     category: { type: String, enum: ['college','wedding','house','travel','emergency','other'], default: 'other' },
     color: { type: String, default: '#f59e0b' }
@@ -68,7 +80,7 @@ const rentalPropertySchema = new mongoose.Schema({
   name: { type: String, required: true },
   address: { type: String, default: '' },
   monthlyRent: { type: Number, default: 0 },
-  mortgage: { type: Number, default: 0 },       // monthly mortgage + escrow
+  mortgage: { type: Number, default: 0 },
   annualExpenses: {
     hoa: { type: Number, default: 0 },
     rentalFee: { type: Number, default: 0 },
@@ -78,11 +90,7 @@ const rentalPropertySchema = new mongoose.Schema({
     maintenance: { type: Number, default: 0 },
     other: { type: Number, default: 0 }
   },
-  multiYearExpenses: [{
-    name: { type: String },
-    totalCost: { type: Number },
-    years: { type: Number }
-  }],
+  multiYearExpenses: [{ name: String, totalCost: Number, years: Number }],
   notes: { type: String, default: '' },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -90,5 +98,4 @@ const rentalPropertySchema = new mongoose.Schema({
 const MonthlyEntry = mongoose.model('MonthlyEntry', monthlyEntrySchema);
 const Profile = mongoose.model('Profile', profileSchema);
 const RentalProperty = mongoose.model('RentalProperty', rentalPropertySchema);
-
 module.exports = { MonthlyEntry, Profile, RentalProperty };

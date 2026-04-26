@@ -19,13 +19,18 @@ mongoose.connect(process.env.MONGODB_URI)
     if (!existing) {
       await Profile.create(seedData);
       console.log('Auto-seeded family profile and goals');
-    } else if (!existing.goals || existing.goals.length === 0) {
-      // Goals missing — patch them in
-      await Profile.findByIdAndUpdate('main', {
-        goals: seedData.goals,
-        currentInvestments: seedData.currentInvestments
-      });
-      console.log('Patched missing goals into existing profile');
+    } else {
+      // Always patch goals and taxProfile to keep them current
+      const needsGoalPatch = !existing.goals || existing.goals.length === 0 ||
+        !existing.goals[0].durationYears;
+      if (needsGoalPatch) {
+        await Profile.findByIdAndUpdate('main', {
+          goals: seedData.goals,
+          currentInvestments: seedData.currentInvestments,
+          taxProfile: seedData.taxProfile
+        });
+        console.log('Patched goals with distribution model and tax profile');
+      }
     }
 
     // Auto-seed April 2026 monthly entry
