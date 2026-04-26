@@ -313,6 +313,21 @@ router.post('/admin/patch', requireAuth, async (req, res) => {
     const seedData = require('../config/seedData');
     const results = [];
 
+    if (operation === 'patch_expenses' || operation === 'all') {
+      const r = await MonthlyEntry.findOneAndUpdate(
+        { year: 2026, month: 4 },
+        { $set: {
+          'expenses.childcare': 240,       // 2 kids × $120/mo classes
+          'expenses.subscriptions': 305.42 // Netflix $15 + Prime $13.33 + gym $80 + phone $180 + printing $10 + Costco $5.42 + BJs $1.67
+        }},
+        { new: true }
+      );
+      results.push(r
+        ? '✅ April 2026 expenses patched — Kids classes $240, Subscriptions $305.42'
+        : '⚠️ April 2026 entry not found'
+      );
+    }
+
     if (operation === 'patch_utilities' || operation === 'all') {
       const r = await MonthlyEntry.findOneAndUpdate(
         { year: 2026, month: 4 },

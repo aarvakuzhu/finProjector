@@ -48,8 +48,8 @@ mongoose.connect(process.env.MONGODB_URI)
           transport: 350,     // Gas 50 + car maintenance 00
           insurance: 650,     // Home 20 + auto 80 + life 50
           healthcare: 850,    // Health insurance 50 + HSA 50 + dental 0
-          childcare: 600,     // Kids activities, school supplies
-          subscriptions: 335, // Streaming 0 + gym 0 + Prime 5 + phone 80
+          childcare: 240,     // 2 kids × $120/mo classes
+          subscriptions: 305.42, // Streaming 0 + gym 0 + Prime 5 + phone 80
           clothing: 200,      // $2,400/yr ÷ 12
           entertainment: 200,
           travel: 833,        // $10,000/yr ÷ 12 (annual travel budget)
