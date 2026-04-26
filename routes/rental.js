@@ -69,3 +69,53 @@ router.delete('/rental/:id', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+// Rental P&L summary — used by monthly waterfall
+router.get('/rental-summary', requireAuth, async (req, res) => {
+  try {
+    const properties = await RentalProperty.find() || [];
+    const summary = properties.map(p => {
+      const rent = p.monthlyRent || 0;
+      const mortgage = p.mortgage || 0;
+      const ae = p.annualExpenses || {};
+      const annMonthly = (
+        (ae.hoa || 0) + (ae.rentalFee || 0) + (ae.trugreen || 0) +
+        (ae.termite || 0) + (ae.mowing || 0) + (ae.maintenance || 0) + (ae.other || 0)
+      ) / 12;
+      const multiMonthly = (p.multiYearExpenses || []).reduce((s, e) =>
+        s + (parseFloat(e.totalCost) || 0) / Math.max(1, parseInt(e.years) || 1) / 12, 0);
+      const totalExpenses = mortgage + annMonthly + multiMonthly;
+      const netCashFlow = rent - totalExpenses;
+      return {
+        id: p._id,
+        name: p.name,
+        rent,
+        mortgage,
+        annMonthly: Math.round(annMonthly * 100) / 100,
+        multiMonthly: Math.round(multiMonthly * 100) / 100,
+        totalExpenses: Math.round(totalExpenses * 100) / 100,
+        netCashFlow: Math.round(netCashFlow * 100) / 100,
+        expenseDetail: {
+          mortgage,
+          hoa:         (ae.hoa         || 0) / 12,
+          rentalFee:   (ae.rentalFee   || 0) / 12,
+          trugreen:    (ae.trugreen    || 0) / 12,
+          termite:     (ae.termite     || 0) / 12,
+          mowing:      (ae.mowing      || 0) / 12,
+          maintenance: (ae.maintenance || 0) / 12,
+          other:       (ae.other       || 0) / 12,
+          multiYear:   (p.multiYearExpenses || []).map(e => ({
+            name: e.name,
+            monthly: (parseFloat(e.totalCost)||0) / Math.max(1, parseInt(e.years)||1) / 12
+          }))
+        }
+      };
+    });
+    const totals = {
+      totalRent:     summary.reduce((s, p) => s + p.rent, 0),
+      totalExpenses: summary.reduce((s, p) => s + p.totalExpenses, 0),
+      totalNet:      summary.reduce((s, p) => s + p.netCashFlow, 0)
+    };
+    res.json({ properties: summary, totals });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});

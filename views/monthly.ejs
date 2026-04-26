@@ -153,6 +153,7 @@ let currentYear = now.getFullYear();
 let currentMonth = now.getMonth() + 1;
 let calculatedTax = 5340;
 let taxManuallyChanged = false;
+let rentalSummary = null;
 
 const ESTIMATES = {
   income: { salary: 16917, other: 4583, bonus: 0, rental: 2350, investments: 0 },
@@ -334,10 +335,39 @@ function buildWaterfall() {
   }
   html += subtotalRow('KP Take-Home', running);
 
-  // ── STEP 5: RENTAL adds on top ────────────────────────────
-  if (rental) {
-    html += row('divider', '', '', '', '');
-    html += row('header', '🏠 Rental Income — adds to surplus', '', '', 'tag-inv');
+  // ── STEP 5: RENTAL — expenses first, then net flows in ────
+  html += row('divider', '', '', '', '');
+  if (rentalSummary && rentalSummary.properties && rentalSummary.properties.length > 0) {
+    const rp = rentalSummary.properties[0];  // first property
+    html += row('header', '🏠 Rental Property — Net Cash Flow', '', '', 'tag-inv');
+    // Show gross rent
+    html += incRow('Gross Rent', rp.rent, '#6366f1', running, maxVal);
+    // Show each rental expense
+    const rd = rp.expenseDetail;
+    const rentalExpLines = [
+      { label: 'Mortgage + Escrow', amount: rd.mortgage },
+      { label: 'HOA',               amount: rd.hoa },
+      { label: 'Rental Fee',        amount: rd.rentalFee },
+      { label: 'Trugreen',          amount: rd.trugreen },
+      { label: 'Termite',           amount: rd.termite },
+      { label: 'Mowing',            amount: rd.mowing },
+      { label: 'Maintenance',       amount: rd.maintenance },
+      { label: 'Other',             amount: rd.other },
+      ...(rd.multiYear || []).map(e => ({ label: e.name, amount: e.monthly }))
+    ].filter(e => e.amount > 0.01);
+    rentalExpLines.forEach(e => {
+      html += expRow(e.label, e.amount, '#818cf8', running, maxVal, '', 'rental');
+    });
+    // Net flows in (positive or negative)
+    const rentalNet = rp.netCashFlow;
+    running += rentalNet;
+    const netTag = rentalNet >= 0
+      ? `<span class="source-tag tag-ash" style="margin-left:6px">+${fmt(rentalNet)} net</span>`
+      : `<span class="source-tag" style="background:rgba(220,38,38,0.12);color:var(--danger);margin-left:6px">${fmt(rentalNet)} shortfall</span>`;
+    html += subtotalRow(`Rental Net (${rentalNet >= 0 ? 'surplus' : 'deficit'} from salary)`, running);
+  } else if (rental) {
+    // Fallback: just show rental income field value
+    html += row('header', '🏠 Rental Income', '', '', 'tag-inv');
     html += incRow('Rental Income', rental, '#6366f1', running, maxVal);
     running += rental;
     html += subtotalRow('After Rental', running);
@@ -384,7 +414,7 @@ function incRow(label, amount, color, running, maxVal) {
 
 function expRow(label, amount, color, running, maxVal, extra='', type='') {
   const pct = Math.min(100, amount / maxVal * 100).toFixed(1);
-  const amtColor = type === 'inv' ? 'color:var(--warning)' : 'color:var(--danger)';
+  const amtColor = type === 'inv' ? 'color:var(--warning)' : type === 'rental' ? 'color:#818cf8' : 'color:var(--danger)';
   return `<div class="wf-row">
     <div class="wf-label">${label}${extra}</div>
     <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${color};opacity:0.7"></div></div>
@@ -420,6 +450,14 @@ async function loadTax() {
       buildWaterfall();
     }
   } catch(e) { console.error('Tax load error:', e); }
+}
+
+// ── Load Rental P&L ─────────────────────────────────────
+async function loadRental() {
+  try {
+    const data = await fetch('/api/rental-summary').then(r => r.json());
+    if (data && data.totals) rentalSummary = data;
+  } catch(e) { console.error('Rental load error:', e); }
 }
 
 document.getElementById('btnRecalcTax').addEventListener('click', () => {
@@ -525,7 +563,7 @@ document.getElementById('btnDelete').addEventListener('click', async () => {
   loadEntry();
 });
 
-loadTax().then(() => updateDisplay());
+Promise.all([loadTax(), loadRental()]).then(() => updateDisplay());
 </script>
 
 <%- include('partials/footer') %>
