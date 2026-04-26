@@ -437,3 +437,56 @@ body {
 @media (max-width: 768px) {
   .tax-entry-cards { grid-template-columns: 1fr; }
 }
+
+/* ── Tax auto-row in Monthly Entry ─────────────────────── */
+.tax-field-row { grid-column: 1 / -1 !important; }
+.tax-auto-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.tax-auto-row > div:first-child { flex: 1; min-width: 180px; }
+.tax-auto-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  flex: 1;
+  min-width: 200px;
+}
+.tax-auto-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(5,150,105,0.1);
+  color: var(--accent);
+  margin-left: 6px;
+  font-family: 'Inter', sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tax-auto-badge.manual {
+  background: rgba(217,119,6,0.1);
+  color: var(--warning);
+}
+.btn-recalc {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--accent);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.btn-recalc:hover { background: var(--bg2); }

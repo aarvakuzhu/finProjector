@@ -39,11 +39,27 @@ mongoose.connect(process.env.MONGODB_URI)
       await MonthlyEntry.create({
         year: 2026, month: 4,
         income: { salary: 16917, bonus: 0, rental: 2350, investments: 0, other: 4583 },
-        expenses: { housing: 0, utilities: 0, groceries: 0, dining: 0, transport: 0, insurance: 0, healthcare: 0, education: 0, entertainment: 0, clothing: 0, travel: 0, subscriptions: 0, childcare: 0, other: 0 },
-        investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 0, other: 0 },
-        notes: 'April 2026 — first tracked month. Ash $203k + KP $55k + rental $2,350. 401k 10% + ROTH 5% + KP 401k 7%.'
+        expenses: {
+          taxes: 5340,        // Federal ,890 + GA 43 + FICA ,508 (auto-calculated)
+          housing: 3150,      // Primary home mortgage
+          utilities: 575,     // Electricity 80 + gas 5 + water 5 + internet 0 + trash 5
+          groceries: 1200,
+          dining: 400,
+          transport: 350,     // Gas 50 + car maintenance 00
+          insurance: 650,     // Home 20 + auto 80 + life 50
+          healthcare: 850,    // Health insurance 50 + HSA 50 + dental 0
+          childcare: 600,     // Kids activities, school supplies
+          subscriptions: 335, // Streaming 0 + gym 0 + Prime 5 + phone 80
+          clothing: 150,
+          entertainment: 200,
+          travel: 500,        // Amortized vacation (k/yr)
+          education: 0,
+          other: 200
+        },
+        investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 150, other: 0 },
+        notes: 'April 2026 — first tracked month with Cumming GA estimates. Override any field as needed. Tax auto-calculated from Georgia MFJ rates.'
       });
-      console.log('Auto-seeded April 2026 monthly entry');
+      console.log('Auto-seeded April 2026 monthly entry with expense estimates');
     }
   })
   .catch(err => console.error('MongoDB error:', err));
