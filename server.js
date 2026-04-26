@@ -42,7 +42,7 @@ mongoose.connect(process.env.MONGODB_URI)
         expenses: {
           taxes: 5340,        // Federal ,890 + GA 43 + FICA ,508 (auto-calculated)
           housing: 3150,      // Primary home mortgage
-          utilities: 575,     // Electricity 80 + gas 5 + water 5 + internet 0 + trash 5
+          utilities: 486.34,     // Electricity 80 + gas 5 + water 5 + internet 0 + trash 5
           groceries: 1200,
           dining: 400,
           transport: 350,     // Gas 50 + car maintenance 00
