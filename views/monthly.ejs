@@ -337,40 +337,51 @@ function buildWaterfall() {
 
   // ── STEP 5: RENTAL — expenses first, then net flows in ────
   html += row('divider', '', '', '', '');
-  if (rentalSummary && rentalSummary.properties && rentalSummary.properties.length > 0) {
-    const rp = rentalSummary.properties[0];  // first property
+  if (rental > 0) {
     html += row('header', '🏠 Rental Property — Net Cash Flow', '', '', 'tag-inv');
-    // Show gross rent
-    html += incRow('Gross Rent', rp.rent, '#6366f1', running, maxVal);
-    // Show each rental expense
-    const rd = rp.expenseDetail;
-    const rentalExpLines = [
-      { label: 'Mortgage + Escrow', amount: rd.mortgage },
-      { label: 'HOA',               amount: rd.hoa },
-      { label: 'Rental Fee',        amount: rd.rentalFee },
-      { label: 'Trugreen',          amount: rd.trugreen },
-      { label: 'Termite',           amount: rd.termite },
-      { label: 'Mowing',            amount: rd.mowing },
-      { label: 'Maintenance',       amount: rd.maintenance },
-      { label: 'Other',             amount: rd.other },
-      ...(rd.multiYear || []).map(e => ({ label: e.name, amount: e.monthly }))
-    ].filter(e => e.amount > 0.01);
+    html += incRow('Gross Rent', rental, '#6366f1', running, maxVal);
+
+    // Pull expense lines from saved rental data or use known defaults
+    let rentalExpLines = [];
+    if (rentalSummary && rentalSummary.properties && rentalSummary.properties.length > 0) {
+      const rd = rentalSummary.properties[0].expenseDetail;
+      rentalExpLines = [
+        { label: 'Mortgage + Escrow', amount: rd.mortgage },
+        { label: 'HOA',               amount: rd.hoa },
+        { label: 'Rental Fee',        amount: rd.rentalFee },
+        { label: 'Trugreen',          amount: rd.trugreen },
+        { label: 'Termite',           amount: rd.termite },
+        { label: 'Mowing',            amount: rd.mowing },
+        { label: 'Maintenance',       amount: rd.maintenance },
+        { label: 'Other',             amount: rd.other || 0 },
+        ...(rd.multiYear || []).map(e => ({ label: e.name, amount: e.monthly }))
+      ].filter(e => e.amount > 0.01);
+    } else {
+      // Known defaults — matches rental page pre-fill
+      rentalExpLines = [
+        { label: 'Mortgage + Escrow', amount: 2160.98 },
+        { label: 'HOA',               amount: 500/12 },
+        { label: 'Rental Fee',        amount: 300/12 },
+        { label: 'Trugreen',          amount: 300/12 },
+        { label: 'Termite',           amount: 200/12 },
+        { label: 'Mowing',            amount: 630/12 },
+        { label: 'Maintenance',       amount: 3000/12 },
+        { label: 'Home Warranty',     amount: 2100/5/12 },
+      ].filter(e => e.amount > 0.01);
+    }
+
+    let rentalRunning = rental;
     rentalExpLines.forEach(e => {
-      html += expRow(e.label, e.amount, '#818cf8', running, maxVal, '', 'rental');
+      rentalRunning -= e.amount;
+      html += expRow(e.label, e.amount, '#818cf8', rentalRunning, maxVal, '', 'rental');
     });
-    // Net flows in (positive or negative)
-    const rentalNet = rp.netCashFlow;
-    running += rentalNet;
-    const netTag = rentalNet >= 0
-      ? `<span class="source-tag tag-ash" style="margin-left:6px">+${fmt(rentalNet)} net</span>`
-      : `<span class="source-tag" style="background:rgba(220,38,38,0.12);color:var(--danger);margin-left:6px">${fmt(rentalNet)} shortfall</span>`;
-    html += subtotalRow(`Rental Net (${rentalNet >= 0 ? 'surplus' : 'deficit'} from salary)`, running);
-  } else if (rental) {
-    // Fallback: just show rental income field value
-    html += row('header', '🏠 Rental Income', '', '', 'tag-inv');
-    html += incRow('Rental Income', rental, '#6366f1', running, maxVal);
-    running += rental;
-    html += subtotalRow('After Rental', running);
+
+    const rentalNet = rentalRunning;  // net after all rental expenses
+    running += rentalNet;             // only net flows into main running total
+    html += subtotalRow(
+      rentalNet >= 0 ? 'Rental surplus → salary' : 'Rental deficit ← salary covers',
+      running
+    );
   }
 
   // ── STEP 6: Discretionary investments (post-expense) ──────
