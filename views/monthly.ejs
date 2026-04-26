@@ -259,68 +259,96 @@ function buildWaterfall() {
     { label: 'Other Invest',  amount: invOther,color: '#d1fae5' },
   ].filter(e => e.amount > 0);
 
-  let running = 0;    // tracks cumulative from Ash salary
-  let layer = 'ash';  // ash | kp | rental
+  // Separate investments into salary-deductions vs discretionary
+  // 401k + ROTH come off Ash salary before expenses (payroll deductions)
+  // Brokerage/Savings/HSA/Other are post-expense discretionary
+  const ash401k_ded  = inv401k;   // combined Ash+KP 401k — deducted from Ash gross
+  const ashRoth_ded  = invIra;    // ROTH — post-tax but committed before spending
+  const discInvItems = [
+    { label: 'Brokerage',    amount: invBrok,  color: '#34d399' },
+    { label: 'Savings',      amount: invSav,   color: '#6ee7b7' },
+    { label: 'HSA',          amount: invHsa,   color: '#a7f3d0' },
+    { label: 'Other Invest', amount: invOther, color: '#d1fae5' },
+  ].filter(e => e.amount > 0);
+
+  let running = 0;
+  let wentNegativeOnAsh = false;
 
   const barW = n => Math.min(100, Math.abs(n) / maxVal * 100).toFixed(1);
   const fmtR = n => `<span class="${n>=0?'positive':'negative'}" style="font-weight:700">${fmtS(n)}</span>`;
 
   let html = '';
 
-  // ── ASH INCOME ───────────────────────────────────────────
-  html += row('header', '💼 Ash Income', '', '', 'tag-ash');
+  // ── STEP 1: ASH SALARY ───────────────────────────────────
+  html += row('header', '💼 Ash Gross Income', '', '', 'tag-ash');
   if (ashSalary) { running += ashSalary; html += incRow('Ash Salary', ashSalary, '#059669', running, maxVal); }
   if (bonus)     { running += bonus;     html += incRow('Bonus',      bonus,      '#10b981', running, maxVal); }
 
-  // ── ALL EXPENSES (charged to Ash first) ──────────────────
-  const groups = ['Fixed Costs','Household','Lifestyle','Discretionary'];
-  const groupColors = { 'Fixed Costs':'#dc2626','Household':'#f97316','Lifestyle':'#0ea5e9','Discretionary':'#a855f7' };
+  // ── STEP 2: DEDUCT 401k + ROTH FROM SALARY ──────────────
+  // These are payroll deductions — never available for spending
+  const dedItems = [
+    { label: '401k — Ash + KP', amount: ash401k_ded, color: '#0d9488' },
+    { label: 'ROTH IRA — Ash',  amount: ashRoth_ded, color: '#14b8a6' },
+  ].filter(e => e.amount > 0);
 
+  if (dedItems.length) {
+    html += row('header', '✂️ Payroll Deductions (never available for expenses)', '', '', '');
+    dedItems.forEach(e => {
+      running -= e.amount;
+      html += expRow(e.label, e.amount, e.color, running, maxVal, '', 'inv');
+    });
+    html += subtotalRow('Ash Take-Home (after deductions)', running);
+  }
+
+  // ── STEP 3: ALL EXPENSES charged to Ash take-home ────────
+  const groups = ['Fixed Costs','Household','Lifestyle','Discretionary'];
   groups.forEach(g => {
     const items = expenseItems.filter(e => e.group === g);
     if (!items.length) return;
     html += row('header', `📌 ${g}`, '', '', '');
     items.forEach(e => {
       running -= e.amount;
-      const overflowTag = running < 0 && layer === 'ash' ? ' <span class="source-tag" style="background:rgba(236,72,153,0.12);color:#ec4899">KP covers →</span>' : '';
-      html += expRow(e.label, e.amount, e.color, running, maxVal, overflowTag);
-      // Switch layer labels when Ash goes negative
-      if (running < 0 && layer === 'ash') layer = 'kp-needed';
+      if (running < 0 && !wentNegativeOnAsh) {
+        wentNegativeOnAsh = true;
+      }
+      const overTag = running < 0 ? ' <span class="source-tag" style="background:rgba(236,72,153,0.15);color:#ec4899">→ KP covers</span>' : '';
+      html += expRow(e.label, e.amount, e.color, running, maxVal, overTag);
     });
     html += subtotalRow(`After ${g}`, running);
   });
 
-  // ── KP INCOME ────────────────────────────────────────────
-  const ashAfterExp = running;
+  // ── STEP 4: KP SALARY covers deficit or adds to surplus ──
   html += row('divider', '', '', '', '');
-  html += row('header', '👩 KP Income covers gap', '', '', 'tag-kp');
-  html += incRow('KP Salary', kpSalary, '#ec4899', ashAfterExp, maxVal);
+  const labelKP = running < 0 ? '👩 KP Salary — covers shortfall' : '👩 KP Salary — adds to surplus';
+  html += row('header', labelKP, '', '', 'tag-kp');
+  html += incRow('KP Salary', kpSalary, '#ec4899', running, maxVal);
   running += kpSalary;
-  html += subtotalRow('After KP salary', running);
+  html += subtotalRow('After KP Salary', running);
 
-  // ── INVESTMENTS ──────────────────────────────────────────
-  if (invItems.length) {
-    html += row('header', '📈 Investments', '', '', 'tag-inv');
-    invItems.forEach(e => {
-      running -= e.amount;
-      html += expRow(e.label, e.amount, e.color, running, maxVal, '', 'inv');
-    });
-    html += subtotalRow('After Investments', running);
-  }
-
-  // ── RENTAL ───────────────────────────────────────────────
+  // ── STEP 5: RENTAL adds on top ────────────────────────────
   if (rental) {
     html += row('divider', '', '', '', '');
-    html += row('header', '🏠 Rental Property', '', '', 'tag-inv');
+    html += row('header', '🏠 Rental Income — adds to surplus', '', '', 'tag-inv');
     html += incRow('Rental Income', rental, '#6366f1', running, maxVal);
     running += rental;
     html += subtotalRow('After Rental', running);
   }
 
+  // ── STEP 6: Discretionary investments (post-expense) ──────
+  if (discInvItems.length) {
+    html += row('divider', '', '', '', '');
+    html += row('header', '📈 Additional Investments', '', '', '');
+    discInvItems.forEach(e => {
+      running -= e.amount;
+      html += expRow(e.label, e.amount, e.color, running, maxVal, '', 'inv');
+    });
+    html += subtotalRow('After Additional Investments', running);
+  }
+
   // ── FINAL NET ────────────────────────────────────────────
   html += row('divider', '', '', '', '');
   html += `<div class="wf-row wf-net-row">
-    <div class="wf-label wf-total">Monthly Net Savings</div>
+    <div class="wf-label wf-total">💵 Monthly Net Cash Saved</div>
     <div class="wf-bar-wrap">
       <div class="wf-bar" style="width:${barW(running)}%;background:${running>=0?'var(--accent)':'var(--danger)'}"></div>
     </div>
