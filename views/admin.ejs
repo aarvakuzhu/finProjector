@@ -1,0 +1,115 @@
+<%- include('partials/header', { title: 'Admin', page: 'admin' }) %>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Admin</h1>
+    <p class="page-sub">Data management and one-click MongoDB operations</p>
+  </div>
+</div>
+
+<div class="admin-grid">
+
+  <!-- Run All -->
+  <div class="admin-card admin-card-primary">
+    <div class="admin-card-icon">⚡</div>
+    <div class="admin-card-body">
+      <div class="admin-card-title">Run All Patches</div>
+      <div class="admin-card-desc">Apply all data corrections in one shot — utilities, goals, investments and April 2026 seed data.</div>
+    </div>
+    <button class="btn btn-primary" onclick="runOp('all')">Run All</button>
+  </div>
+
+  <!-- Patch Utilities -->
+  <div class="admin-card">
+    <div class="admin-card-icon">💡</div>
+    <div class="admin-card-body">
+      <div class="admin-card-title">Patch Utilities — April 2026</div>
+      <div class="admin-card-desc">Update utilities from estimate ($575) to actual: Sawnee $207.43 + Xoom $111.13 + AT&T $94.99 + GA Water $72.79 = <strong>$486.34</strong></div>
+    </div>
+    <button class="btn btn-ghost" onclick="runOp('patch_utilities')">Apply</button>
+  </div>
+
+  <!-- Reseed April 2026 -->
+  <div class="admin-card">
+    <div class="admin-card-icon">📅</div>
+    <div class="admin-card-body">
+      <div class="admin-card-title">Reseed April 2026 Entry</div>
+      <div class="admin-card-desc">Fully overwrite April 2026 monthly entry with all known actual values — income, expenses, investments.</div>
+    </div>
+    <button class="btn btn-ghost" onclick="runOp('seed_april')">Apply</button>
+  </div>
+
+  <!-- Patch Goals -->
+  <div class="admin-card">
+    <div class="admin-card-icon">🎯</div>
+    <div class="admin-card-body">
+      <div class="admin-card-title">Restore Life Goals</div>
+      <div class="admin-card-desc">Re-patch all 4 goals into the profile: College Abhi/Adhar ($200k each), Wedding Abhi/Adhar ($100k each).</div>
+    </div>
+    <button class="btn btn-ghost" onclick="runOp('patch_goals')">Apply</button>
+  </div>
+
+  <!-- Patch Investments -->
+  <div class="admin-card">
+    <div class="admin-card-icon">📈</div>
+    <div class="admin-card-body">
+      <div class="admin-card-title">Patch Investment Portfolio</div>
+      <div class="admin-card-desc">Set current investments to $321,845 (Ash ~$300k + KP ReadySave $13,845 + Empower $8k) and savings to $100k.</div>
+    </div>
+    <button class="btn btn-ghost" onclick="runOp('patch_investments')">Apply</button>
+  </div>
+
+</div>
+
+<!-- Results log -->
+<div class="admin-log" id="adminLog" style="display:none">
+  <div class="admin-log-header">
+    <span>Operation Log</span>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('adminLog').style.display='none'">Clear</button>
+  </div>
+  <div id="adminLogBody"></div>
+</div>
+
+<script>
+async function runOp(operation) {
+  const log = document.getElementById('adminLog');
+  const logBody = document.getElementById('adminLogBody');
+  log.style.display = 'block';
+
+  const label = {
+    all: 'Run All Patches',
+    patch_utilities: 'Patch Utilities',
+    seed_april: 'Reseed April 2026',
+    patch_goals: 'Restore Goals',
+    patch_investments: 'Patch Investments'
+  }[operation];
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry log-running';
+  entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> <span class="log-op">${label}</span> <span class="log-status">Running...</span>`;
+  logBody.prepend(entry);
+
+  try {
+    const res = await fetch('/api/admin/patch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operation })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      entry.className = 'log-entry log-success';
+      entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> <span class="log-op">${label}</span>
+        <div class="log-results">${data.results.map(r => `<div class="log-result">${r}</div>`).join('')}</div>`;
+    } else {
+      entry.className = 'log-entry log-error';
+      entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> <span class="log-op">${label}</span> <span class="log-status log-err">Error: ${data.error}</span>`;
+    }
+  } catch (e) {
+    entry.className = 'log-entry log-error';
+    entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span> <span class="log-op">${label}</span> <span class="log-status log-err">Failed: ${e.message}</span>`;
+  }
+}
+</script>
+
+<%- include('partials/footer') %>

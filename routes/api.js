@@ -304,3 +304,91 @@ router.get('/tax', requireAuth, async (req, res) => {
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Admin Operations ─────────────────────────────────────────
+router.post('/admin/patch', requireAuth, async (req, res) => {
+  try {
+    const { operation } = req.body;
+    const { MonthlyEntry, Profile } = require('../models');
+    const seedData = require('../config/seedData');
+    const results = [];
+
+    if (operation === 'patch_utilities' || operation === 'all') {
+      const r = await MonthlyEntry.findOneAndUpdate(
+        { year: 2026, month: 4 },
+        { $set: { 'expenses.utilities': 486.34 } },
+        { new: true }
+      );
+      results.push(r
+        ? '✅ April 2026 utilities → $486.34 (Sawnee $207.43 + Xoom $111.13 + AT&T $94.99 + Water $72.79)'
+        : '⚠️ April 2026 entry not found — will use correct value when created'
+      );
+    }
+
+    if (operation === 'patch_goals' || operation === 'all') {
+      const r = await Profile.findByIdAndUpdate('main', {
+        goals: seedData.goals,
+        currentInvestments: seedData.currentInvestments,
+        taxProfile: seedData.taxProfile
+      }, { new: true });
+      results.push(r
+        ? `✅ Goals patched — ${r.goals.length} goals restored`
+        : '⚠️ Profile not found'
+      );
+    }
+
+    if (operation === 'patch_investments' || operation === 'all') {
+      const r = await Profile.findByIdAndUpdate('main', {
+        currentInvestments: 321845,
+        currentSavings: 100000
+      }, { new: true });
+      results.push(r
+        ? '✅ Investments → $321,845 (Ash $300k + KP ReadySave $13,845 + Empower $8k)'
+        : '⚠️ Profile not found'
+      );
+    }
+
+    if (operation === 'seed_april' || operation === 'all') {
+      const existing = await MonthlyEntry.findOne({ year: 2026, month: 4 });
+      if (existing) {
+        await MonthlyEntry.findOneAndUpdate(
+          { year: 2026, month: 4 },
+          {
+            income: { salary: 16917, bonus: 0, rental: 2350, investments: 0, other: 4583 },
+            expenses: {
+              taxes: 5340, housing: 3150, utilities: 486.34, groceries: 1200,
+              dining: 400, transport: 350, insurance: 650, healthcare: 850,
+              childcare: 600, subscriptions: 335, clothing: 200,
+              entertainment: 200, travel: 833, education: 250, other: 250
+            },
+            investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 150, other: 0 },
+            notes: 'April 2026 — seeded with actual values. Utilities: Sawnee $207.43 + Xoom $111.13 + AT&T $94.99 + Water $72.79.'
+          }
+        );
+        results.push('✅ April 2026 fully reseeded with all actual values');
+      } else {
+        await MonthlyEntry.create({
+          year: 2026, month: 4,
+          income: { salary: 16917, bonus: 0, rental: 2350, investments: 0, other: 4583 },
+          expenses: {
+            taxes: 5340, housing: 3150, utilities: 486.34, groceries: 1200,
+            dining: 400, transport: 350, insurance: 650, healthcare: 850,
+            childcare: 600, subscriptions: 335, clothing: 200,
+            entertainment: 200, travel: 833, education: 250, other: 250
+          },
+          investments: { retirement401k: 2013, ira: 846, brokerage: 0, savings: 0, hsa: 150, other: 0 },
+          notes: 'April 2026 — created with actual values.'
+        });
+        results.push('✅ April 2026 created fresh with all actual values');
+      }
+    }
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: 'Unknown operation' });
+    }
+
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});

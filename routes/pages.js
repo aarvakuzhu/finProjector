@@ -6,6 +6,7 @@ router.get('/', requireAuth, (req, res) => res.render('dashboard'));
 router.get('/monthly', requireAuth, (req, res) => res.render('monthly'));
 router.get('/projection', requireAuth, (req, res) => res.render('projection'));
 router.get('/goals', requireAuth, (req, res) => res.render('goals'));
+router.get('/admin', requireAuth, (req, res) => res.render('admin'));
 router.get('/tax', requireAuth, (req, res) => res.render('tax'));
 router.get('/rental', requireAuth, (req, res) => res.render('rental'));
 router.get('/family', requireAuth, (req, res) => res.render('family'));
