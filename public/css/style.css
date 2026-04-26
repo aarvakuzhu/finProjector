@@ -503,3 +503,9 @@ body {
   text-transform: none;
   letter-spacing: 0;
 }
+
+/* ── Waterfall extras ───────────────────────────────────── */
+.wf-subtotal { background: var(--bg3); border-radius: 4px; margin: 2px 0; }
+.wf-subtotal .wf-label { color: var(--text-dim); }
+.wf-net-row { background: var(--bg3); border-radius: 6px; padding: 8px 4px !important; margin-top: 4px; }
+.wf-bar-wrap { position: relative; }

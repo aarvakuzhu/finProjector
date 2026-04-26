@@ -141,10 +141,6 @@
       <div class="waterfall-wrap" id="waterfall"></div>
     </div>
 
-    <div class="chart-card">
-      <h3 class="chart-title">Income Sources</h3>
-      <canvas id="incomeDonut" height="160"></canvas>
-    </div>
 
   </div>
 
@@ -157,7 +153,6 @@ let currentYear = now.getFullYear();
 let currentMonth = now.getMonth() + 1;
 let calculatedTax = 5340;
 let taxManuallyChanged = false;
-let incomeChart = null;
 
 const ESTIMATES = {
   income: { salary: 16917, other: 4583, bonus: 0, rental: 2350, investments: 0 },
@@ -183,7 +178,6 @@ function buildWaterfall() {
   const bonus      = getV('income_bonus');
   const rental     = getV('income_rental');
   const invIncome  = getV('income_investments');
-  const totalIncome = ashSalary + kpSalary + bonus + rental + invIncome;
 
   const taxes      = getV('expenses_taxes');
   const housing    = getV('expenses_housing');
@@ -211,161 +205,167 @@ function buildWaterfall() {
 
   const totalExp   = taxes + housing + utilities + groceries + dining + transport +
                      insurance + healthcare + kids + subs + clothing + entertain + travel + gifts + other;
-  const net        = totalIncome - totalExp - totalInv;
+  const totalIncome = ashSalary + kpSalary + bonus + rental + invIncome;
 
   // Update header totals
   document.getElementById('totalIncome').textContent   = fmt(totalIncome);
   document.getElementById('totalExpenses').textContent = fmt(totalExp);
   document.getElementById('totalInvested').textContent = fmt(totalInv);
 
-  // Buckets: { label, amount, color, source, type }
-  // source: ash | kp | both | rental | investment
-  const buckets = [
-    // Income sources
-    { label: 'Ash Salary',    amount: ashSalary,  color: '#059669', source: 'ash',  type: 'income' },
-    { label: 'KP Salary',     amount: kpSalary,   color: '#ec4899', source: 'kp',   type: 'income' },
-    { label: 'Bonus',         amount: bonus,       color: '#10b981', source: 'ash',  type: 'income' },
-    { label: 'Rental',        amount: rental,      color: '#6366f1', source: 'both', type: 'income' },
-    { label: 'Invest Returns',amount: invIncome,   color: '#8b5cf6', source: 'both', type: 'income' },
-    // Expenses - Ash primary, KP secondary
-    // Fixed/essential (Ash)
-    { label: 'Taxes',         amount: taxes,       color: '#dc2626', source: 'ash',  type: 'expense', bucket: 'Fixed' },
-    { label: 'Mortgage',      amount: housing,     color: '#ef4444', source: 'ash',  type: 'expense', bucket: 'Fixed' },
-    { label: 'Insurance',     amount: insurance,   color: '#f87171', source: 'ash',  type: 'expense', bucket: 'Fixed' },
-    { label: 'Healthcare',    amount: healthcare,  color: '#fb923c', source: 'ash',  type: 'expense', bucket: 'Fixed' },
-    // Household (Both)
-    { label: 'Utilities',     amount: utilities,   color: '#f97316', source: 'both', type: 'expense', bucket: 'Household' },
-    { label: 'Groceries',     amount: groceries,   color: '#f59e0b', source: 'both', type: 'expense', bucket: 'Household' },
-    { label: 'Transport',     amount: transport,   color: '#eab308', source: 'both', type: 'expense', bucket: 'Household' },
-    { label: 'Subscriptions', amount: subs,        color: '#84cc16', source: 'both', type: 'expense', bucket: 'Household' },
-    // Lifestyle (KP primary)
-    { label: 'Dining',        amount: dining,      color: '#06b6d4', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
-    { label: 'Kids',          amount: kids,        color: '#0ea5e9', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
-    { label: 'Clothing',      amount: clothing,    color: '#6366f1', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
-    { label: 'Entertainment', amount: entertain,   color: '#8b5cf6', source: 'kp',   type: 'expense', bucket: 'Lifestyle' },
-    // Discretionary (Both)
-    { label: 'Travel',        amount: travel,      color: '#a855f7', source: 'both', type: 'expense', bucket: 'Discretionary' },
-    { label: 'Gifts',         amount: gifts,       color: '#ec4899', source: 'both', type: 'expense', bucket: 'Discretionary' },
-    { label: 'Other',         amount: other,       color: '#94a3b8', source: 'both', type: 'expense', bucket: 'Discretionary' },
-    // Investments (Ash)
-    { label: '401k (Ash+KP)', amount: inv401k,     color: '#059669', source: 'ash',  type: 'invest', bucket: 'Investments' },
-    { label: 'ROTH IRA',      amount: invIra,      color: '#10b981', source: 'ash',  type: 'invest', bucket: 'Investments' },
-    { label: 'Brokerage',     amount: invBrok,     color: '#34d399', source: 'ash',  type: 'invest', bucket: 'Investments' },
-    { label: 'Savings',       amount: invSav,      color: '#6ee7b7', source: 'ash',  type: 'invest', bucket: 'Investments' },
-    { label: 'HSA',           amount: invHsa,      color: '#a7f3d0', source: 'both', type: 'invest', bucket: 'Investments' },
-  ].filter(b => b.amount > 0);
+  // ── Income layers: Ash → KP → Rental → Other
+  // All expenses charged to Ash first; KP covers overflow; Rental covers remainder
+  const allExpAndInv = totalExp + totalInv;
+  const ashBalance  = ashSalary + bonus - allExpAndInv;  // can go negative
+  const kpBalance   = ashBalance < 0 ? kpSalary + ashBalance : kpSalary; // KP absorbs deficit if Ash negative
+  const rentalBalance = kpBalance < 0 ? rental + kpBalance : rental;     // Rental absorbs if still negative
+  const netFinal    = (ashBalance < 0 ? 0 : ashBalance) +
+                      (kpBalance < 0 ? 0 : kpBalance) +
+                      (rentalBalance < 0 ? 0 : rentalBalance) +
+                      (kpBalance >= 0 && rentalBalance >= 0 ? 0 : 0);
+  // Simpler: just total income minus all outflows
+  const netSurplus  = totalIncome - totalExp - totalInv;
 
-  // Render waterfall
-  const wf = document.getElementById('waterfall');
-  let running = totalIncome;
-  const maxVal = totalIncome;
+  const maxVal = Math.max(totalIncome, 1);
 
-  const sourceTag = s => {
-    const map = { ash:'Ash', kp:'KP', both:'Joint', rental:'Rental', investment:'Returns' };
-    const cls  = { ash:'tag-ash', kp:'tag-kp', both:'tag-both', rental:'tag-inv', investment:'tag-inv' };
-    return `<span class="source-tag ${cls[s]||'tag-both'}">${map[s]||s}</span>`;
-  };
+  // Expense line items grouped in order
+  const expenseItems = [
+    // Fixed — Ash pays these first
+    { label: 'Taxes',         amount: taxes,      color: '#dc2626', group: 'Fixed Costs' },
+    { label: 'Mortgage',      amount: housing,    color: '#ef4444', group: 'Fixed Costs' },
+    { label: 'Insurance',     amount: insurance,  color: '#f87171', group: 'Fixed Costs' },
+    { label: 'Healthcare',    amount: healthcare, color: '#fb923c', group: 'Fixed Costs' },
+    // Household
+    { label: 'Utilities',     amount: utilities,  color: '#f97316', group: 'Household' },
+    { label: 'Groceries',     amount: groceries,  color: '#f59e0b', group: 'Household' },
+    { label: 'Transport',     amount: transport,  color: '#eab308', group: 'Household' },
+    { label: 'Subscriptions', amount: subs,       color: '#84cc16', group: 'Household' },
+    // Lifestyle
+    { label: 'Dining',        amount: dining,     color: '#06b6d4', group: 'Lifestyle' },
+    { label: 'Kids',          amount: kids,       color: '#0ea5e9', group: 'Lifestyle' },
+    { label: 'Clothing',      amount: clothing,   color: '#6366f1', group: 'Lifestyle' },
+    { label: 'Entertainment', amount: entertain,  color: '#8b5cf6', group: 'Lifestyle' },
+    // Discretionary
+    { label: 'Travel',        amount: travel,     color: '#a855f7', group: 'Discretionary' },
+    { label: 'Gifts',         amount: gifts,      color: '#ec4899', group: 'Discretionary' },
+    { label: 'Other',         amount: other,      color: '#94a3b8', group: 'Discretionary' },
+  ].filter(e => e.amount > 0);
+
+  const invItems = [
+    { label: '401k (Ash+KP)', amount: inv401k, color: '#059669' },
+    { label: 'ROTH IRA',      amount: invIra,  color: '#10b981' },
+    { label: 'Brokerage',     amount: invBrok, color: '#34d399' },
+    { label: 'Savings',       amount: invSav,  color: '#6ee7b7' },
+    { label: 'HSA',           amount: invHsa,  color: '#a7f3d0' },
+    { label: 'Other Invest',  amount: invOther,color: '#d1fae5' },
+  ].filter(e => e.amount > 0);
+
+  let running = 0;    // tracks cumulative from Ash salary
+  let layer = 'ash';  // ash | kp | rental
+
+  const barW = n => Math.min(100, Math.abs(n) / maxVal * 100).toFixed(1);
+  const fmtR = n => `<span class="${n>=0?'positive':'negative'}" style="font-weight:700">${fmtS(n)}</span>`;
 
   let html = '';
 
-  // Income section
-  html += `<div class="wf-row"><div class="wf-section-header">INCOME</div></div>`;
-  const incBuckets = buckets.filter(b => b.type === 'income');
-  incBuckets.forEach(b => {
-    const pct = (b.amount / maxVal * 100).toFixed(1);
-    html += `<div class="wf-row">
-      <div class="wf-label">${b.label} ${sourceTag(b.source)}</div>
-      <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.85"></div></div>
-      <div class="wf-amount positive">${fmt(b.amount)}</div>
-    </div>`;
-  });
+  // ── ASH INCOME ───────────────────────────────────────────
+  html += row('header', '💼 Ash Income', '', '', 'tag-ash');
+  if (ashSalary) { running += ashSalary; html += incRow('Ash Salary', ashSalary, '#059669', running, maxVal); }
+  if (bonus)     { running += bonus;     html += incRow('Bonus',      bonus,      '#10b981', running, maxVal); }
 
-  // Total income
-  html += `<div class="wf-row">
-    <div class="wf-label wf-total">Total Income</div>
-    <div class="wf-bar-wrap"><div class="wf-bar" style="width:100%;background:var(--accent);opacity:0.3"></div></div>
-    <div class="wf-amount positive" style="font-weight:700">${fmt(totalIncome)}</div>
-  </div>`;
+  // ── ALL EXPENSES (charged to Ash first) ──────────────────
+  const groups = ['Fixed Costs','Household','Lifestyle','Discretionary'];
+  const groupColors = { 'Fixed Costs':'#dc2626','Household':'#f97316','Lifestyle':'#0ea5e9','Discretionary':'#a855f7' };
 
-  // Expense buckets
-  const expBucketNames = ['Fixed','Household','Lifestyle','Discretionary'];
-  const srcMap = { Fixed: 'ash', Household: 'both', Lifestyle: 'kp', Discretionary: 'both' };
-  const bucketColors = { Fixed:'#dc2626', Household:'#f97316', Lifestyle:'#0ea5e9', Discretionary:'#a855f7' };
-
-  expBucketNames.forEach(bname => {
-    const items = buckets.filter(b => b.bucket === bname);
+  groups.forEach(g => {
+    const items = expenseItems.filter(e => e.group === g);
     if (!items.length) return;
-    const bTotal = items.reduce((s,b) => s+b.amount, 0);
-    running -= bTotal;
-    const pctTotal = (bTotal / maxVal * 100).toFixed(1);
-    const pctRem   = (Math.max(0,running) / maxVal * 100).toFixed(1);
-
-    html += `<div class="wf-row"><div class="wf-section-header">${bname.toUpperCase()} <span class="source-tag ${srcMap[bname]==='ash'?'tag-ash':srcMap[bname]==='kp'?'tag-kp':'tag-both'}">${srcMap[bname]==='ash'?'Ash':srcMap[bname]==='kp'?'KP':'Joint'}</span></div></div>`;
-
-    items.forEach(b => {
-      const pct = (b.amount / maxVal * 100).toFixed(1);
-      html += `<div class="wf-row">
-        <div class="wf-label">${b.label}</div>
-        <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.75"></div></div>
-        <div class="wf-amount negative">-${fmt(b.amount)}</div>
-      </div>`;
+    html += row('header', `📌 ${g}`, '', '', '');
+    items.forEach(e => {
+      running -= e.amount;
+      const overflowTag = running < 0 && layer === 'ash' ? ' <span class="source-tag" style="background:rgba(236,72,153,0.12);color:#ec4899">KP covers →</span>' : '';
+      html += expRow(e.label, e.amount, e.color, running, maxVal, overflowTag);
+      // Switch layer labels when Ash goes negative
+      if (running < 0 && layer === 'ash') layer = 'kp-needed';
     });
-
-    html += `<div class="wf-row">
-      <div class="wf-label wf-total">After ${bname}</div>
-      <div class="wf-bar-wrap">
-        <div class="wf-bar" style="width:${pctRem}%;background:${running>=0?'var(--accent)':'var(--danger)'};opacity:0.4"></div>
-      </div>
-      <div class="wf-amount ${running>=0?'positive':'negative'}" style="font-weight:700">${fmt(running)}</div>
-    </div>`;
+    html += subtotalRow(`After ${g}`, running);
   });
 
-  // Investments
-  const invItems = buckets.filter(b => b.type === 'invest');
+  // ── KP INCOME ────────────────────────────────────────────
+  const ashAfterExp = running;
+  html += row('divider', '', '', '', '');
+  html += row('header', '👩 KP Income covers gap', '', '', 'tag-kp');
+  html += incRow('KP Salary', kpSalary, '#ec4899', ashAfterExp, maxVal);
+  running += kpSalary;
+  html += subtotalRow('After KP salary', running);
+
+  // ── INVESTMENTS ──────────────────────────────────────────
   if (invItems.length) {
-    const invTotal = invItems.reduce((s,b) => s+b.amount, 0);
-    running -= invTotal;
-    html += `<div class="wf-row"><div class="wf-section-header">INVESTMENTS <span class="source-tag tag-ash">Ash primary</span></div></div>`;
-    invItems.forEach(b => {
-      const pct = (b.amount / maxVal * 100).toFixed(1);
-      html += `<div class="wf-row">
-        <div class="wf-label">${b.label}</div>
-        <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${b.color};opacity:0.75"></div></div>
-        <div class="wf-amount" style="color:var(--warning)">-${fmt(b.amount)}</div>
-      </div>`;
+    html += row('header', '📈 Investments', '', '', 'tag-inv');
+    invItems.forEach(e => {
+      running -= e.amount;
+      html += expRow(e.label, e.amount, e.color, running, maxVal, '', 'inv');
     });
+    html += subtotalRow('After Investments', running);
   }
 
-  // Net
-  html += `<div class="wf-row"><div class="wf-divider"></div></div>`;
-  const netPct = (Math.abs(net) / maxVal * 100).toFixed(1);
-  html += `<div class="wf-row">
-    <div class="wf-label wf-total">Net Liquid Cash</div>
-    <div class="wf-bar-wrap"><div class="wf-bar" style="width:${netPct}%;background:${net>=0?'var(--accent)':'var(--danger)'}"></div></div>
-    <div class="wf-amount ${net>=0?'positive':'negative'}" style="font-size:14px;font-weight:700">${fmtS(net)}</div>
+  // ── RENTAL ───────────────────────────────────────────────
+  if (rental) {
+    html += row('divider', '', '', '', '');
+    html += row('header', '🏠 Rental Property', '', '', 'tag-inv');
+    html += incRow('Rental Income', rental, '#6366f1', running, maxVal);
+    running += rental;
+    html += subtotalRow('After Rental', running);
+  }
+
+  // ── FINAL NET ────────────────────────────────────────────
+  html += row('divider', '', '', '', '');
+  html += `<div class="wf-row wf-net-row">
+    <div class="wf-label wf-total">Monthly Net Savings</div>
+    <div class="wf-bar-wrap">
+      <div class="wf-bar" style="width:${barW(running)}%;background:${running>=0?'var(--accent)':'var(--danger)'}"></div>
+    </div>
+    <div class="wf-amount" style="font-size:15px">${fmtR(running)}</div>
   </div>`;
 
-  wf.innerHTML = html;
+  document.getElementById('waterfall').innerHTML = html;
+}
 
-  // Income donut
-  if (incomeChart) incomeChart.destroy();
-  const incData = incBuckets.filter(b => b.amount > 0);
-  if (incData.length > 0) {
-    incomeChart = new Chart(document.getElementById('incomeDonut').getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: incData.map(b => b.label),
-        datasets: [{ data: incData.map(b => b.amount), backgroundColor: incData.map(b => b.color), borderWidth: 0 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: 'var(--text-dim)', font: { size: 11 }, padding: 8 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
-        }
-      }
-    });
-  }
+function row(type, label, barHtml, amount, tagClass) {
+  if (type === 'header') return `<div class="wf-row"><div class="wf-section-header">${label} ${tagClass ? `<span class="source-tag ${tagClass}">${tagClass==='tag-ash'?'Ash':tagClass==='tag-kp'?'KP':tagClass==='tag-inv'?'Rental/Invest':''}</span>`:''}</div></div>`;
+  if (type === 'divider') return `<div class="wf-row"><div class="wf-divider"></div></div>`;
+  return '';
+}
+
+function incRow(label, amount, color, running, maxVal) {
+  const pct = Math.min(100, amount / maxVal * 100).toFixed(1);
+  return `<div class="wf-row">
+    <div class="wf-label">${label}</div>
+    <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${color};opacity:0.8"></div></div>
+    <div class="wf-amount positive">+${fmt(amount)}</div>
+  </div>`;
+}
+
+function expRow(label, amount, color, running, maxVal, extra='', type='') {
+  const pct = Math.min(100, amount / maxVal * 100).toFixed(1);
+  const amtColor = type === 'inv' ? 'color:var(--warning)' : 'color:var(--danger)';
+  return `<div class="wf-row">
+    <div class="wf-label">${label}${extra}</div>
+    <div class="wf-bar-wrap"><div class="wf-bar" style="width:${pct}%;background:${color};opacity:0.7"></div></div>
+    <div class="wf-amount" style="${amtColor}">-${fmt(amount)}</div>
+  </div>`;
+}
+
+function subtotalRow(label, running) {
+  const pct = Math.min(100, Math.abs(running) / 23850 * 100).toFixed(1);
+  return `<div class="wf-row wf-subtotal">
+    <div class="wf-label wf-total">${label}</div>
+    <div class="wf-bar-wrap">
+      ${running >= 0
+        ? `<div class="wf-bar" style="width:${pct}%;background:var(--accent);opacity:0.35"></div>`
+        : `<div class="wf-bar" style="width:${pct}%;background:var(--danger);opacity:0.35;right:0;position:absolute"></div>`}
+    </div>
+    <div class="wf-amount ${running>=0?'positive':'negative'}" style="font-weight:700">${fmtS(running)}</div>
+  </div>`;
 }
 
 // ── Tax auto-load ────────────────────────────────────────
