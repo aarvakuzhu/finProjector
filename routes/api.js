@@ -407,3 +407,149 @@ router.post('/admin/patch', requireAuth, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── Scenario Engine ──────────────────────────────────────────
+// Accepts override params, runs projection with them, returns
+// baseline + scenario side by side for comparison
+
+router.post('/scenario', requireAuth, async (req, res) => {
+  try {
+    const rawProfile = await Profile.findById('main');
+    const profile = defaultProfile(rawProfile ? rawProfile.toObject() : {});
+    const entries = await MonthlyEntry.find().sort({ year: 1, month: 1 }) || [];
+    const currentYear = new Date().getFullYear();
+
+    // Base projection params
+    const baseRetirementYear = currentYear + Math.max(1, (profile.retirementAge || 65) - (profile.currentAge || 45));
+    const baseReturnRate  = Math.max(0, profile.annualReturnRate || 7) / 100;
+    const baseSalaryGrowth = Math.max(0, profile.salaryGrowthRate || 4) / 100;
+
+    // Avg monthly from recent entries
+    const recent = entries.slice(-6);
+    let avgMonthlyCash = 0, avgMonthlyInvested = 0;
+    if (recent.length > 0) {
+      const nets = recent.map(e => entryTotals(e).net);
+      const invs = recent.map(e => entryTotals(e).investments);
+      avgMonthlyCash     = Math.max(0, nets.reduce((a,b) => a+b,0) / nets.length - invs.reduce((a,b) => a+b,0) / invs.length);
+      avgMonthlyInvested = invs.reduce((a,b) => a+b,0) / invs.length;
+    } else {
+      // Fallback: known numbers
+      avgMonthlyCash     = 1460;   // estimated monthly surplus
+      avgMonthlyInvested = 2858;   // 401k + ROTH
+    }
+
+    // Goal schedule (shared between base and scenario)
+    const goalExpenseByYear = {};
+    for (const g of (profile.goals || [])) {
+      const startYear = parseInt(g.targetYear) || currentYear;
+      const duration  = parseInt(g.durationYears) || 1;
+      const annualCost = g.annualAmount ? parseFloat(g.annualAmount) : parseFloat(g.targetAmount) / duration;
+      for (let i = 0; i < duration; i++) {
+        const yr = startYear + i;
+        goalExpenseByYear[yr] = (goalExpenseByYear[yr] || 0) + annualCost;
+      }
+    }
+
+    // ── Scenario overrides ───────────────────────────────────
+    const sc = req.body || {};
+    const scReturnRate   = Math.max(0, parseFloat(sc.returnRate   ?? profile.annualReturnRate)) / 100;
+    const scSalaryGrowth = Math.max(0, parseFloat(sc.salaryGrowth ?? profile.salaryGrowthRate)) / 100;
+    const scRetirementAge = parseInt(sc.retirementAge ?? profile.retirementAge);
+    const scRetirementYear = currentYear + Math.max(1, scRetirementAge - (profile.currentAge || 45));
+
+    // Income shock: job loss for N months in a given year
+    const shockYear       = parseInt(sc.shockYear) || null;
+    const shockMonths     = Math.min(12, Math.max(0, parseInt(sc.shockMonths) || 0));
+    const shockSalary     = parseFloat(sc.shockSalaryPct ?? 100) / 100; // % of Ash salary retained during shock
+    const shockInvestPct  = parseFloat(sc.shockInvestPct ?? 100) / 100; // % of investments retained during shock
+
+    // Extra one-time cost or income in a year
+    const eventYear       = parseInt(sc.eventYear) || null;
+    const eventAmount     = parseFloat(sc.eventAmount) || 0; // negative = expense, positive = windfall
+
+    const maxYear = Math.max(baseRetirementYear, scRetirementYear) + 5;
+
+    function runProjection({ returnRate, salaryGrowth, retirementYear, isScenario }) {
+      let portfolio = Math.max(0, profile.currentInvestments || 0);
+      let cash      = Math.max(0, profile.currentSavings || 0);
+      const years   = [];
+
+      for (let yr = currentYear; yr <= maxYear; yr++) {
+        const yearsFromNow  = yr - currentYear;
+        const growthFactor  = Math.pow(1 + salaryGrowth, yearsFromNow);
+
+        // Apply shocks for scenario
+        let cashFactor = 1, invFactor = 1;
+        if (isScenario && shockYear && yr === shockYear && shockMonths > 0) {
+          const affectedFraction = shockMonths / 12;
+          cashFactor = 1 - affectedFraction * (1 - shockSalary);
+          invFactor  = 1 - affectedFraction * (1 - shockInvestPct);
+        }
+
+        const thisYearCash = avgMonthlyCash     * 12 * growthFactor * cashFactor;
+        const thisYearInv  = avgMonthlyInvested * 12 * growthFactor * invFactor;
+        const goalDraw     = goalExpenseByYear[yr] || 0;
+        const oneTimeEvent = (isScenario && eventYear && yr === eventYear) ? eventAmount : 0;
+
+        portfolio = portfolio * (1 + returnRate) + thisYearInv;
+        cash     += thisYearCash - goalDraw + oneTimeEvent;
+
+        years.push({
+          year: yr,
+          portfolio:   Math.round(portfolio),
+          cashStack:   Math.round(Math.max(0, cash)),
+          totalWealth: Math.round(portfolio + Math.max(0, cash)),
+          isRetirement: yr === retirementYear,
+          goalDraw:    Math.round(goalDraw),
+          shockApplied: isScenario && shockYear && yr === shockYear
+        });
+      }
+      return years;
+    }
+
+    const baseline = runProjection({
+      returnRate: baseReturnRate, salaryGrowth: baseSalaryGrowth,
+      retirementYear: baseRetirementYear, isScenario: false
+    });
+    const scenario = runProjection({
+      returnRate: scReturnRate, salaryGrowth: scSalaryGrowth,
+      retirementYear: scRetirementYear, isScenario: true
+    });
+
+    // Compute impact at retirement and at each goal
+    const baseAtRet = baseline.find(y => y.isRetirement);
+    const scAtRet   = scenario.find(y => y.year === scRetirementYear);
+    const wealthDiff = scAtRet && baseAtRet ? scAtRet.totalWealth - baseAtRet.totalWealth : 0;
+
+    const goalImpacts = (profile.goals || []).map(g => {
+      const yr = g.targetYear;
+      const base = baseline.find(y => y.year === yr);
+      const sc   = scenario.find(y => y.year === yr);
+      return {
+        name: g.name,
+        year: yr,
+        baseWealth: base?.totalWealth || 0,
+        scWealth:   sc?.totalWealth   || 0,
+        diff:       (sc?.totalWealth || 0) - (base?.totalWealth || 0)
+      };
+    });
+
+    res.json({
+      baseline,
+      scenario,
+      baseRetirementYear,
+      scRetirementYear,
+      wealthDiff,
+      goalImpacts,
+      params: {
+        base:     { returnRate: baseReturnRate*100, salaryGrowth: baseSalaryGrowth*100, retirementAge: profile.retirementAge },
+        scenario: { returnRate: scReturnRate*100,   salaryGrowth: scSalaryGrowth*100,   retirementAge: scRetirementAge,
+                    shockYear, shockMonths, shockSalary: shockSalary*100, shockInvestPct: shockInvestPct*100,
+                    eventYear, eventAmount }
+      }
+    });
+  } catch(e) {
+    console.error('Scenario error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});

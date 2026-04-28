@@ -1,0 +1,378 @@
+<%- include('partials/header', { title: 'Scenario Planner', page: 'scenario' }) %>
+
+<style>
+.scenario-layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+.diff-positive { color: var(--accent); }
+.diff-negative { color: var(--danger); }
+.scenario-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.tag-base     { background: rgba(5,150,105,0.12);  color: var(--accent); }
+.tag-scenario { background: rgba(239,68,68,0.12);  color: var(--danger); }
+.tag-shock    { background: rgba(245,158,11,0.15); color: var(--warning); }
+.impact-grid  { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+.impact-card  { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow); }
+.impact-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
+.impact-val   { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+.impact-diff  { font-size: 12px; margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+.scenario-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.scenario-section h3 { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.scenario-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.scenario-field label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.scenario-field input, .scenario-field select { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; width: 100%; }
+.scenario-field input:focus, .scenario-field select:focus { border-color: var(--accent); }
+.scenario-field small { font-size: 11px; color: var(--text-muted); }
+.preset-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.preset-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; cursor: pointer; font-size: 12px; text-align: left; color: var(--text-dim); transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+.preset-btn:hover { background: var(--bg2); color: var(--text); border-color: var(--accent); }
+.preset-icon { font-size: 16px; }
+.goals-impact-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.goals-impact-table th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.goals-impact-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.goals-impact-table tr:last-child td { border-bottom: none; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+@media (max-width: 900px) {
+  .scenario-layout { grid-template-columns: 1fr; }
+  .impact-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) { .impact-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Scenario Planner</h1>
+    <p class="page-sub">Model job loss, income changes, windfalls — see the real impact on your retirement</p>
+  </div>
+  <button class="btn btn-primary" id="btnRun">▶ Run Scenario</button>
+</div>
+
+<div class="scenario-layout">
+
+  <!-- LEFT: Controls -->
+  <div>
+
+    <!-- Presets -->
+    <div class="scenario-section">
+      <h3>Quick Presets</h3>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="applyPreset('job_loss_ash')">
+          <span class="preset-icon">🚨</span>
+          <div><strong>Ash loses job — 6 months</strong><br><small>No salary or 401k for 6 months</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('job_loss_ash_year')">
+          <span class="preset-icon">📉</span>
+          <div><strong>Ash loses job — full year</strong><br><small>No salary or 401k for 12 months</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('kp_job_loss')">
+          <span class="preset-icon">⚠️</span>
+          <div><strong>KP loses job — 6 months</strong><br><small>KP salary missing, expenses still full</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('market_crash')">
+          <span class="preset-icon">📊</span>
+          <div><strong>Market crash — 3% return for 3yr</strong><br><small>Poor investment returns for 3 years</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('early_retire')">
+          <span class="preset-icon">🏖️</span>
+          <div><strong>Early retirement at 60</strong><br><small>Retire 5 years earlier</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('windfall')">
+          <span class="preset-icon">💰</span>
+          <div><strong>$100k windfall in 2027</strong><br><small>Inheritance, bonus, or sale</small></div>
+        </button>
+        <button class="preset-btn" onclick="applyPreset('reset')">
+          <span class="preset-icon">↺</span>
+          <div><strong>Reset to baseline</strong></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Income Shock -->
+    <div class="scenario-section">
+      <h3>💼 Income Shock</h3>
+      <div class="scenario-field">
+        <label>Job loss / income cut year</label>
+        <input type="number" id="sc_shockYear" placeholder="2026" min="2024" max="2060">
+        <small>Which year does the income shock happen?</small>
+      </div>
+      <div class="scenario-field">
+        <label>Months without income</label>
+        <input type="number" id="sc_shockMonths" placeholder="0" min="0" max="12">
+        <small>0 = no shock, 12 = full year out</small>
+      </div>
+      <div class="scenario-field">
+        <label>Ash salary retained (%)</label>
+        <input type="number" id="sc_shockSalaryPct" placeholder="100" min="0" max="100">
+        <small>100 = full salary, 0 = no salary, 50 = half salary</small>
+      </div>
+      <div class="scenario-field">
+        <label>Investments retained during shock (%)</label>
+        <input type="number" id="sc_shockInvestPct" placeholder="100" min="0" max="100">
+        <small>e.g. 0 = pause all contributions</small>
+      </div>
+    </div>
+
+    <!-- Market & Growth -->
+    <div class="scenario-section">
+      <h3>📈 Market & Growth</h3>
+      <div class="scenario-field">
+        <label>Annual investment return (%)</label>
+        <input type="number" id="sc_returnRate" placeholder="7" step="0.5">
+        <small>Baseline: 7% — try 3% for bear market</small>
+      </div>
+      <div class="scenario-field">
+        <label>Annual salary growth (%)</label>
+        <input type="number" id="sc_salaryGrowth" placeholder="4" step="0.5">
+        <small>Baseline: 4% — try 2% for slower growth</small>
+      </div>
+      <div class="scenario-field">
+        <label>Target retirement age</label>
+        <input type="number" id="sc_retirementAge" placeholder="65" min="50" max="75">
+      </div>
+    </div>
+
+    <!-- One-time Event -->
+    <div class="scenario-section">
+      <h3>⚡ One-Time Event</h3>
+      <div class="scenario-field">
+        <label>Year</label>
+        <input type="number" id="sc_eventYear" placeholder="e.g. 2027" min="2024" max="2060">
+      </div>
+      <div class="scenario-field">
+        <label>Amount (negative = expense, positive = windfall)</label>
+        <input type="number" id="sc_eventAmount" placeholder="e.g. 100000 or -50000">
+        <small>e.g. $100,000 bonus, -$30,000 medical, $200,000 inheritance</small>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="btnRun2" style="margin-top:4px">▶ Run Scenario</button>
+
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div id="resultsPane">
+    <div class="scenario-section" style="text-align:center;padding:40px">
+      <div style="font-size:48px;margin-bottom:12px">🔭</div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text)">Set parameters and run a scenario</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:6px">Use the presets on the left or set your own values, then hit Run Scenario</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CY = new Date().getFullYear();
+const fmt  = n => '$' + Math.abs(Math.round(n||0)).toLocaleString();
+const fmtD = n => (n>=0?'+':'-') + '$' + Math.abs(Math.round(n||0)).toLocaleString();
+
+const PRESETS = {
+  job_loss_ash:      { shockYear: CY, shockMonths: 6,  shockSalaryPct: 0,   shockInvestPct: 0,   returnRate: 7, salaryGrowth: 4, retirementAge: 65 },
+  job_loss_ash_year: { shockYear: CY, shockMonths: 12, shockSalaryPct: 0,   shockInvestPct: 0,   returnRate: 7, salaryGrowth: 4, retirementAge: 65 },
+  kp_job_loss:       { shockYear: CY, shockMonths: 6,  shockSalaryPct: 75,  shockInvestPct: 75,  returnRate: 7, salaryGrowth: 4, retirementAge: 65 },
+  market_crash:      { shockYear: null, shockMonths: 0, shockSalaryPct: 100, shockInvestPct: 100, returnRate: 3, salaryGrowth: 2, retirementAge: 65 },
+  early_retire:      { shockYear: null, shockMonths: 0, shockSalaryPct: 100, shockInvestPct: 100, returnRate: 7, salaryGrowth: 4, retirementAge: 60 },
+  windfall:          { shockYear: null, shockMonths: 0, shockSalaryPct: 100, shockInvestPct: 100, returnRate: 7, salaryGrowth: 4, retirementAge: 65, eventYear: CY+1, eventAmount: 100000 },
+  reset:             { shockYear: '', shockMonths: '', shockSalaryPct: 100, shockInvestPct: 100, returnRate: 7, salaryGrowth: 4, retirementAge: 65, eventYear: '', eventAmount: '' }
+};
+
+function applyPreset(key) {
+  const p = PRESETS[key];
+  if (!p) return;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  set('sc_shockYear',       p.shockYear || '');
+  set('sc_shockMonths',     p.shockMonths || '');
+  set('sc_shockSalaryPct',  p.shockSalaryPct ?? 100);
+  set('sc_shockInvestPct',  p.shockInvestPct ?? 100);
+  set('sc_returnRate',      p.returnRate ?? 7);
+  set('sc_salaryGrowth',    p.salaryGrowth ?? 4);
+  set('sc_retirementAge',   p.retirementAge ?? 65);
+  set('sc_eventYear',       p.eventYear || '');
+  set('sc_eventAmount',     p.eventAmount || '');
+  runScenario();
+}
+
+async function runScenario() {
+  const pane = document.getElementById('resultsPane');
+  pane.innerHTML = `<div class="scenario-section" style="text-align:center;padding:32px">
+    <div style="font-size:32px;margin-bottom:8px">⏳</div>
+    <div style="color:var(--text-muted)">Running scenario...</div>
+  </div>`;
+
+  const body = {
+    returnRate:      parseFloat(document.getElementById('sc_returnRate').value)      || 7,
+    salaryGrowth:    parseFloat(document.getElementById('sc_salaryGrowth').value)    || 4,
+    retirementAge:   parseInt(document.getElementById('sc_retirementAge').value)     || 65,
+    shockYear:       parseInt(document.getElementById('sc_shockYear').value)         || null,
+    shockMonths:     parseInt(document.getElementById('sc_shockMonths').value)       || 0,
+    shockSalaryPct:  parseFloat(document.getElementById('sc_shockSalaryPct').value)  ?? 100,
+    shockInvestPct:  parseFloat(document.getElementById('sc_shockInvestPct').value)  ?? 100,
+    eventYear:       parseInt(document.getElementById('sc_eventYear').value)         || null,
+    eventAmount:     parseFloat(document.getElementById('sc_eventAmount').value)     || 0,
+  };
+
+  try {
+    const data = await fetch('/api/scenario', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(r => r.json());
+
+    if (data.error) throw new Error(data.error);
+    renderResults(data, body);
+  } catch(e) {
+    pane.innerHTML = `<div class="scenario-section" style="padding:24px">
+      <div style="color:var(--danger)">Error: ${e.message}</div>
+    </div>`;
+  }
+}
+
+function renderResults(data, params) {
+  const { baseline, scenario, baseRetirementYear, scRetirementYear, wealthDiff, goalImpacts } = data;
+  const baseAtRet = baseline.find(y => y.year === baseRetirementYear) || {};
+  const scAtRet   = scenario.find(y => y.year === scRetirementYear)   || {};
+
+  // Build scenario description
+  let scenarioDesc = [];
+  if (params.shockYear && params.shockMonths > 0) {
+    const lostPct = 100 - (params.shockSalaryPct ?? 100);
+    scenarioDesc.push(`${params.shockMonths} month income cut (${lostPct}% salary loss) in ${params.shockYear}`);
+    if ((params.shockInvestPct ?? 100) < 100) scenarioDesc.push(`investments paused ${100 - params.shockInvestPct}%`);
+  }
+  if (params.returnRate !== 7) scenarioDesc.push(`${params.returnRate}% investment return (vs 7% baseline)`);
+  if (params.salaryGrowth !== 4) scenarioDesc.push(`${params.salaryGrowth}% salary growth (vs 4% baseline)`);
+  if (params.retirementAge !== 65) scenarioDesc.push(`retire at ${params.retirementAge} (vs 65 baseline)`);
+  if (params.eventYear && params.eventAmount) {
+    scenarioDesc.push(`${params.eventAmount > 0 ? '+' : ''}${fmt(params.eventAmount)} event in ${params.eventYear}`);
+  }
+
+  const diffClass = wealthDiff >= 0 ? 'diff-positive' : 'diff-negative';
+
+  const pane = document.getElementById('resultsPane');
+  pane.innerHTML = `
+
+    <!-- Scenario label -->
+    <div class="scenario-section" style="padding:14px 18px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="scenario-tag tag-scenario">Scenario Active</span>
+        <span style="font-size:13px;color:var(--text-dim)">${scenarioDesc.join(' · ') || 'No changes from baseline'}</span>
+      </div>
+    </div>
+
+    <!-- Impact cards -->
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="impact-label">Baseline Wealth at Retirement</div>
+        <div class="impact-val">${fmt(baseAtRet.totalWealth)}</div>
+        <div class="impact-diff" style="color:var(--text-muted)">at ${baseRetirementYear} (age 65)</div>
+      </div>
+      <div class="impact-card" style="border-color:${wealthDiff>=0?'rgba(5,150,105,0.3)':'rgba(220,38,38,0.3)'}">
+        <div class="impact-label">Scenario Wealth at Retirement</div>
+        <div class="impact-val">${fmt(scAtRet.totalWealth)}</div>
+        <div class="impact-diff" style="color:var(--text-muted)">at ${scRetirementYear} (age ${params.retirementAge})</div>
+      </div>
+      <div class="impact-card" style="border-color:${wealthDiff>=0?'rgba(5,150,105,0.3)':'rgba(220,38,38,0.3)'}">
+        <div class="impact-label">Retirement Wealth Difference</div>
+        <div class="impact-val ${diffClass}">${fmtD(wealthDiff)}</div>
+        <div class="impact-diff ${diffClass}">${wealthDiff >= 0 ? '▲ Better off' : '▼ Worse off'} in this scenario</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="scenario-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;border:none;padding:0">Wealth Trajectory Comparison</h3>
+        <div style="display:flex;gap:14px;font-size:12px">
+          <span><span style="display:inline-block;width:12px;height:3px;background:var(--accent);vertical-align:middle;margin-right:4px"></span>Baseline</span>
+          <span><span style="display:inline-block;width:12px;height:3px;background:#ef4444;vertical-align:middle;margin-right:4px"></span>Scenario</span>
+        </div>
+      </div>
+      <div style="position:relative;height:280px">
+        <canvas id="scenarioChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Year by year table (first 15 years) -->
+    <div class="scenario-section">
+      <h3>Year-by-Year Impact</h3>
+      <div style="overflow-x:auto">
+        <table class="goals-impact-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Baseline Portfolio</th>
+              <th>Scenario Portfolio</th>
+              <th>Difference</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${baseline.slice(0, 20).map((b, i) => {
+              const s = scenario[i] || {};
+              const diff = (s.totalWealth || 0) - (b.totalWealth || 0);
+              const notes = [];
+              if (b.isRetirement) notes.push('<span class="scenario-tag tag-base">Baseline retire</span>');
+              if (s.isRetirement && scRetirementYear !== baseRetirementYear) notes.push('<span class="scenario-tag tag-scenario">Scenario retire</span>');
+              if (s.shockApplied) notes.push('<span class="scenario-tag tag-shock">⚡ Shock year</span>');
+              if (b.goalDraw > 0) notes.push(`<span class="scenario-tag" style="background:rgba(99,102,241,0.12);color:var(--accent2)">Goal -${fmt(b.goalDraw)}</span>`);
+              return `<tr>
+                <td class="mono">${b.year}</td>
+                <td class="mono">${fmt(b.totalWealth)}</td>
+                <td class="mono">${fmt(s.totalWealth)}</td>
+                <td class="mono ${diff>=0?'diff-positive':'diff-negative'}">${fmtD(diff)}</td>
+                <td style="font-size:11px">${notes.join(' ')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Goal impacts -->
+    ${goalImpacts.length > 0 ? `
+    <div class="scenario-section">
+      <h3>Impact on Life Goals</h3>
+      <table class="goals-impact-table">
+        <thead><tr><th>Goal</th><th>Year</th><th>Baseline Wealth</th><th>Scenario Wealth</th><th>Impact</th></tr></thead>
+        <tbody>
+          ${goalImpacts.map(g => `<tr>
+            <td>${g.name}</td>
+            <td class="mono">${g.year}</td>
+            <td class="mono">${fmt(g.baseWealth)}</td>
+            <td class="mono">${fmt(g.scWealth)}</td>
+            <td class="mono ${g.diff>=0?'diff-positive':'diff-negative'}">${fmtD(g.diff)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+  `;
+
+  // Draw chart
+  const labels    = baseline.map(y => y.year);
+  const baseData  = baseline.map(y => y.totalWealth);
+  const scData    = scenario.map(y => y.totalWealth);
+  const theme     = window.getChartTheme ? getChartTheme() : { tickColor: '#64748b', gridColor: 'rgba(0,0,0,0.06)', legendColor: '#475569' };
+
+  new Chart(document.getElementById('scenarioChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Baseline',  data: baseData, borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.06)', fill: true, tension: 0.4, pointRadius: labels.map(yr => yr===baseRetirementYear?7:1), pointBackgroundColor: labels.map(yr => yr===baseRetirementYear?'#f59e0b':'#059669') },
+        { label: 'Scenario',  data: scData,   borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.06)',  fill: true, tension: 0.4, pointRadius: labels.map(yr => yr===scRetirementYear?7:1),   pointBackgroundColor: labels.map(yr => yr===scRetirementYear?'#f59e0b':'#ef4444'), borderDash: [4,3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: theme.legendColor } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } }
+      },
+      scales: {
+        x: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor } },
+        y: { ticks: { color: theme.tickColor, callback: v => '$'+(v>=1e6?(v/1e6).toFixed(1)+'M':v.toLocaleString()) }, grid: { color: theme.gridColor } }
+      }
+    }
+  });
+}
+
+document.getElementById('btnRun').addEventListener('click', runScenario);
+document.getElementById('btnRun2').addEventListener('click', runScenario);
+</script>
+
+<%- include('partials/footer') %>
